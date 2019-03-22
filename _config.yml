@@ -2,7 +2,7 @@
 # Basic settings.
 #
 url: http://DaehwanKimLab.github.io
-baseurl: /hisatgenotype
+baseurl: /hisat-genotype
 title: HISAT-genotype
 description: next-generation genomic analysis software platform
 avatar: /assets/img/ogp.png
