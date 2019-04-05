@@ -9,83 +9,34 @@ share: false
 Introduction
 ============
 
-What is HISAT2?
------------------
+Using the human reference genome, referred to as the linear reference (e.g. GRCh38 and hg38), for genomic analysis would be rather straightforward if our variants were uniformly distributed with only one nucleotide difference every 1,000 nucleotides, which most of the currently used alignment programs could handle with great accuracy. However, the distribution of variants is not uniform. Some genomic regions such as HLA genes and DNA fingerprinting loci are highly polymorphic. So using the reference genome for analyzing such highly polymorphic regions may not be the most effective approach, and this is where our graph reference comes into play.
 
-HISAT2 is a fast and sensitive alignment program for mapping next-generation sequencing reads 
-(whole-genome, transcriptome, and exome sequencing data) against the general human population 
-(as well as against a single reference genome). Based on [GCSA] (an extension of [BWT] for a graph), we designed and implemented a graph FM index (GFM),
-an original approach and its first implementation to the best of our knowledge. 
-In addition to using one global GFM index that represents general population, 
-HISAT2 uses a large set of small GFM indexes that collectively cover the whole genome 
-(each index representing a genomic region of 56 Kbp, with 55,000 indexes needed to cover human population). 
-These small indexes (called local indexes) combined with several alignment strategies enable effective alignment of sequencing reads. 
-This new indexing scheme is called Hierarchical Graph FM index (HGFM). 
-We have developed HISAT 2 based on the [HISAT] and [Bowtie2] implementations.
-HISAT2 outputs alignments in [SAM] format, enabling interoperation with a large number of other tools (e.g. [SAMtools], [GATK]) that use SAM.
-HISAT2 is distributed under the [GPLv3 license], and it runs on the command line under
-Linux, Mac OS X and Windows.
-
-[HISAT2]:          http://ccb.jhu.edu/software/hisat2
-[HISAT]:           http://ccb.jhu.edu/software/hisat
-[Bowtie2]:         http://bowtie-bio.sf.net/bowtie2
-[Bowtie]:          http://bowtie-bio.sf.net
-[Bowtie1]:         http://bowtie-bio.sf.net
-[GCSA]:            http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6698337&tag=1
-[Burrows-Wheeler Transform]: http://en.wikipedia.org/wiki/Burrows-Wheeler_transform
-[BWT]:             http://en.wikipedia.org/wiki/Burrows-Wheeler_transform
-[FM Index]:        http://en.wikipedia.org/wiki/FM-index
-[SAM]:             http://samtools.sourceforge.net/SAM1.pdf
-[SAMtools]:        http://samtools.sourceforge.net
-[GATK]:            http://www.broadinstitute.org/gsa/wiki/index.php/The_Genome_Analysis_Toolkit
-[TopHat2]:         http://ccb.jhu.edu/software/tophat
-[Cufflinks]:       http://cufflinks.cbcb.umd.edu/
-[Crossbow]:        http://bowtie-bio.sf.net/crossbow
-[Myrna]:           http://bowtie-bio.sf.net/myrna
-[Bowtie paper]:    http://genomebiology.com/2009/10/3/R25
-[GPLv3 license]:   http://www.gnu.org/licenses/gpl-3.0.html
-
-
-Obtaining HISAT2
+HISATgenotype Set-up
 ==================
 
-Download HISAT2 sources and binaries from the Releases sections on the right side.
-Binaries are available for Intel architectures (`x86_64`) running Linux, and Mac OS X.
+We use [HISAT2] for graph representation and alignment, which is currently the most practical and quickest program available. We refer to hisat-genotype as our top directory where all of our programs are located. hisat-genotype is a place holder that you can change to whatever name you’d like to use.
 
-Building from source
+[HISAT2]:          http://ccb.jhu.edu/software/hisat2
+
+Requirements
 --------------------
+
+HISATgenotype is encoded in python2 and contains standard python libraries. A
+python 2.7 release is recommended. Additional software required is [Samtools]
+version 1.3 or later.
 
 Building HISAT2 from source requires a GNU-like environment with GCC, GNU Make
 and other basics.  It should be possible to build HISAT2 on most vanilla Linux
 installations or on a Mac installation with [Xcode] installed.  HISAT2 can
-also be built on Windows using [Cygwin] or [MinGW] (MinGW recommended). For a 
+also be built on Windows using [Cygwin] or [MinGW] (MinGW recommended). For a
 MinGW build the choice of what compiler is to be used is important since this
-will determine if a 32 or 64 bit code can be successfully compiled using it. If 
-there is a need to generate both 32 and 64 bit on the same machine then a multilib 
-MinGW has to be properly installed. [MSYS], the [zlib] library, and depending on 
+will determine if a 32 or 64 bit code can be successfully compiled using it. If
+there is a need to generate both 32 and 64 bit on the same machine then a multilib
+MinGW has to be properly installed. [MSYS], the [zlib] library, and depending on
 architecture [pthreads] library are also required. We are recommending a 64 bit
-build since it has some clear advantages in real life research problems. In order 
-to simplify the MinGW setup it might be worth investigating popular MinGW personal 
+build since it has some clear advantages in real life research problems. In order
+to simplify the MinGW setup it might be worth investigating popular MinGW personal
 builds since these are coming already prepared with most of the toolchains needed.
-
-First, download the [source package] from the Releases section on the right side.
-Unzip the file, change to the unzipped directory, and build the
-HISAT2 tools by running GNU `make` (usually with the command `make`, but
-sometimes with `gmake`) with no arguments.  If building with MinGW, run `make`
-from the MSYS environment.
-
-HISAT2 is using the multithreading software model in order to speed up 
-execution times on SMP architectures where this is possible. On POSIX 
-platforms (like linux, Mac OS, etc) it needs the pthread library. Although
-it is possible to use pthread library on non-POSIX platform like Windows, due
-to performance reasons HISAT2 will try to use Windows native multithreading
-if possible.
-
-For the support of SRA data access in HISAT2, please download and install the [NCBI-NGS] toolkit.
-When running `make`, specify additional variables as follow.
-`make USE_SRA=1 NCBI_NGS_DIR=/path/to/NCBI-NGS-directory NCBI_VDB_DIR=/path/to/NCBI-NGS-directory`,
-where `NCBI_NGS_DIR` and `NCBI_VDB_DIR` will be used in Makefile for -I and -L compilation options.
-For example, $(NCBI_NGS_DIR)/include and $(NCBI_NGS_DIR)/lib64 will be used.  
 
 [Cygwin]:   http://www.cygwin.com/
 [MinGW]:    http://www.mingw.org/
@@ -94,10 +45,37 @@ For example, $(NCBI_NGS_DIR)/include and $(NCBI_NGS_DIR)/lib64 will be used.
 [pthreads]: http://sourceware.org/pthreads-win32/
 [GnuWin32]: http://gnuwin32.sf.net/packages/coreutils.htm
 [Download]: https://sourceforge.net/projects/bowtie-bio/files/bowtie2/
-[sourceforge site]: https://sourceforge.net/projects/bowtie-bio/files/bowtie2/
-[source package]: http://ccb.jhu.edu/software/hisat2/downloads/hisat2-2.0.0-beta-source.zip
-[Xcode]:    http://developer.apple.com/xcode/
-[NCBI-NGS]: https://github.com/ncbi/ngs/wiki/Downloads 
+[Xcode]: https://developer.apple.com/Xcode
+[Samtools]: https://www.htslib.org
+
+Downloading HISATgenotype and Building HISAT2 from source
+--------------------
+
+```bash
+$ git clone https://github.com/DaehwanKimLab/hisat2 hisat-genotype
+$ cd hisat-genotype
+hisat-genotype$ git checkout hisatgenotype_v1.1.2_beta
+$ make hisat2-align-s hisat2-build-s hisat2-inspect-s
+```
+
+Adding HISATgenotype to PATH
+--------------------
+Add the above directory (hisat-genotype-top) to your PATH environment variable
+(e.g. ~/.bashrc) to make the binaries we just built above and other python scripts
+available everywhere:
+
+```bash
+$ export PATH=hisat-genotype:hisat-genotype/hisatgenotype_scripts:$PATH
+$ export PYTHONPATH=hisat-genotype/hisatgenotype_modules:$PYTHONPATH
+```
+
+
+
+
+
+
+
+
 
 Running HISAT2
 =============
@@ -128,7 +106,7 @@ report them.
 
 In general, when we say that a read has an alignment, we mean that it has a
 [valid alignment].  When we say that a read has multiple alignments, we mean
-that it has multiple alignments that are valid and distinct from one another. 
+that it has multiple alignments that are valid and distinct from one another.
 
 [valid alignment]: #valid-alignments-meet-or-exceed-the-minimum-score-threshold
 
@@ -176,7 +154,7 @@ where exactly it originated.
 Alignment summary
 ------------------
 
-When HISAT2 finishes running, it prints messages summarizing what happened. 
+When HISAT2 finishes running, it prints messages summarizing what happened.
 These messages are printed to the "standard error" ("stderr") filehandle.  For
 datasets consisting of unpaired reads, the summary might look like this:
 
@@ -210,7 +188,7 @@ The indentation indicates how subtotals relate to totals.
 Wrapper
 -------
 
-The `hisat2`, `hisat2-build` and `hisat2-inspect` executables are actually 
+The `hisat2`, `hisat2-build` and `hisat2-inspect` executables are actually
 wrapper scripts that call binary programs as appropriate.  The wrappers shield
 users from having to distinguish between "small" and "large" index formats,
 discussed briefly in the following section.  Also, the `hisat2` wrapper
@@ -433,7 +411,7 @@ considered valid, and `x` is the read length.
 
 * \--ignore-quals  
   When calculating a mismatch penalty, always consider the quality value at the
-  mismatched position to be the highest possible, regardless of the actual value. 
+  mismatched position to be the highest possible, regardless of the actual value.
   I.e. input is treated as though all quality values are high.  This is also the
   default behavior when the input doesn't specify quality values (e.g. in [`-f`],
   [`-r`], or [`-c`] modes).
@@ -447,7 +425,7 @@ considered valid, and `x` is the read length.
   reference strand. In paired-end mode, `--nofw` and `--norc` pertain to the
   fragments; i.e. specifying `--nofw` causes `hisat2` to explore only those
   paired-end configurations corresponding to fragments from the reverse-complement
-  (Crick) strand.  Default: both strands enabled. 
+  (Crick) strand.  Default: both strands enabled.
 {: #hisat2-options-nofw}
 [`--nofw`]: #hisat2-options-nofw
 
@@ -465,7 +443,7 @@ considered valid, and `x` is the read length.
 [`--mp`]: #hisat2-options-mp
 
 * \--sp `MX,MN`  
-  Sets the maximum (`MX`) and minimum (`MN`) penalties for soft-clipping per base, 
+  Sets the maximum (`MX`) and minimum (`MN`) penalties for soft-clipping per base,
   both integers. A number less than or equal to `MX` and greater than or equal to `MN` is
   subtracted from the alignment score for each position.
   The number subtracted is `MN + floor( (MX-MN)(MIN(Q, 40.0)/40.0) )`
@@ -565,7 +543,7 @@ considered valid, and `x` is the read length.
 * \--no-temp-splicesite  
   HISAT2, by default, makes use of splice sites found by earlier reads to align later reads in the same run,
   in particular, reads with small anchors (<= 15 bp).  
-  The option disables this default alignment strategy. 
+  The option disables this default alignment strategy.
 {: #hisat2-options-no-temp-splicesite}
 [`--no-temp-splicesite`]: #hisat2-options-no-temp-splicesite
 
@@ -576,10 +554,10 @@ considered valid, and `x` is the read length.
 
 * \--rna-strandness `<string>`  
   Specify strand-specific information: the default is unstranded.  
-  For single-end reads, use F or R. 
+  For single-end reads, use F or R.
   >'F' means a read corresponds to a transcript.  
   >'R' means a read corresponds to the reverse complemented counterpart of a transcript.
-    
+
   For paired-end reads, use either FR or RF.  
   With this option being used, every read alignment will have an XS attribute tag:
   >'+' means a read belongs to a transcript on '+' strand of genome.  
@@ -597,7 +575,7 @@ considered valid, and `x` is the read length.
 * \--dta/\--downstream-transcriptome-assembly  
   Report alignments tailored for transcript assemblers including StringTie.
   With this option, HISAT2 requires longer anchor lengths for de novo discovery of splice sites.
-  This leads to fewer alignments with short-anchors, 
+  This leads to fewer alignments with short-anchors,
   which helps transcript assemblers improve significantly in computation and memory usage.
 {: #hisat2-options-dta}
 [`--dta/--downstream-transcriptome-assembly`]: #hisat2-options-dta
@@ -663,7 +641,7 @@ considered valid, and `x` is the read length.
   For typical fragment length ranges (200 to 400 nucleotides), HISAT2 is very
   efficient.  
   <p/>
-  Default: 0 (essentially imposing no minimum) 
+  Default: 0 (essentially imposing no minimum)
 {: #hisat2-options-I}
 [`-I`/`--minins`]: #hisat2-options-I
 [`-I`]: #hisat2-options-I
@@ -723,7 +701,7 @@ considered valid, and `x` is the read length.
 #### Output options
 
 * -t/\--time  
-  Print the wall-clock time required to load the index files and align the reads. 
+  Print the wall-clock time required to load the index files and align the reads.
   This is printed to the "standard error" ("stderr") filehandle.  Default: off.
 {: #hisat2-options-t}
 [`-t`/`--time`]: #hisat2-options-t
@@ -963,10 +941,10 @@ considered valid, and `x` is the read length.
 SAM output
 ----------
 
-Following is a brief description of the [SAM] format as output by `hisat2`. 
+Following is a brief description of the [SAM] format as output by `hisat2`.
 For more details, see the [SAM format specification][SAM].
 
-By default, `hisat2` prints a SAM header with `@HD`, `@SQ` and `@PG` lines. 
+By default, `hisat2` prints a SAM header with `@HD`, `@SQ` and `@PG` lines.
 When one or more [`--rg`] arguments are specified, `hisat2` will also print
 an `@RG` line that includes all user-specified [`--rg`] tokens separated by
 tabs.
@@ -976,7 +954,7 @@ read.  Each line is a collection of at least 12 fields separated by tabs; from
 left to right, the fields are:  
 
 
-1.  Name of read that aligned. 
+1.  Name of read that aligned.
     Note that the [SAM specification] disallows whitespace in the read name.
     If the read name contains any whitespace characters, HISAT2 will truncate
     the name at the first whitespace character.  This is similar to the
@@ -998,7 +976,7 @@ left to right, the fields are:
 3.  Name of reference sequence where alignment occurs
 4.  1-based offset into the forward reference strand where leftmost
     character of the alignment occurs  
-5.  Mapping quality.  Mapping quality of HISAT2 
+5.  Mapping quality.  Mapping quality of HISAT2
 6.  CIGAR string representation of alignment
 7.  Name of reference sequence where mate's alignment occurs.  Set to `=` if the
 mate's reference sequence is the same as this alignment's, or `*` if there is no
@@ -1027,7 +1005,7 @@ alignment:
     * {: #hisat2-opt-fields-ys} `YS:i:<N>` : Alignment score for opposite mate in the paired-end alignment.  Only present
       if the SAM record is for a read that aligned as part of a paired-end
       alignment.
-    * {: #hisat2-opt-fields-xn} `XN:i:<N>` : The number of ambiguous bases in the reference covering this alignment. 
+    * {: #hisat2-opt-fields-xn} `XN:i:<N>` : The number of ambiguous bases in the reference covering this alignment.
       Only present if SAM record is for an aligned read.
     * {: #hisat2-opt-fields-xm} `XM:i:<N>` : The number of mismatches in the alignment.  Only present if SAM record is
       for an aligned read.
@@ -1046,7 +1024,7 @@ alignment:
       Value of `DP` indicates the read was part of a pair and the pair aligned
       discordantly.  Value of `UP` indicates the read was part of a pair but the
       pair failed to aligned either concordantly or discordantly.
-    * {: #hisat2-opt-fields-md} `MD:Z:<S>` : A string representation of the mismatched reference bases in the alignment. 
+    * {: #hisat2-opt-fields-md} `MD:Z:<S>` : A string representation of the mismatched reference bases in the alignment.
       See [SAM] format specification for details.  Only present if SAM record is
       for an aligned read.
     * {: #hisat2-opt-fields-xs} `XS:A:<A>` : Values of `+` and `-` indicate the read is mapped to transcripts on sense and anti-sense
@@ -1084,7 +1062,7 @@ The `hisat2-build` indexer
 
 `hisat2-build` builds a HISAT2 index from a set of DNA sequences.
 `hisat2-build` outputs a set of 6 files with suffixes `.1.ht2`, `.2.ht2`,
-`.3.ht2`, `.4.ht2`, `.5.ht2`, `.6.ht2`, `.7.ht2`, and `.8.ht2`.  In the case of a large 
+`.3.ht2`, `.4.ht2`, `.5.ht2`, `.6.ht2`, `.7.ht2`, and `.8.ht2`.  In the case of a large
 index these suffixes will have a `ht2l` termination.  These files together
 constitute the index: they are all that is needed to align reads to that
 reference.  The original sequence FASTA files are no longer used by HISAT2
@@ -1127,9 +1105,9 @@ Usage:
     hisat2-build [options]* <reference_in> <ht2_base>
 
 ### Notes
-    If you use --snp, --ss, and/or --exon, hisat2-build will need about 200GB RAM for the human genome size as index building involves a graph construction. 
+    If you use --snp, --ss, and/or --exon, hisat2-build will need about 200GB RAM for the human genome size as index building involves a graph construction.
     Otherwise, you will be able to build an index on your desktop with 8GB RAM.
-    
+
 ### Main arguments
 
 * `<reference_in>`  
@@ -1176,7 +1154,7 @@ Usage:
 * \--bmax `<int>`  
   The maximum number of suffixes allowed in a block.  Allowing more suffixes per
   block makes indexing faster, but increases peak memory usage.  Setting this
-  option overrides any previous setting for [`--bmax`], or [`--bmaxdivn`]. 
+  option overrides any previous setting for [`--bmax`], or [`--bmaxdivn`].
   Default (in terms of the [`--bmaxdivn`] parameter) is [`--bmaxdivn`] 4.  This is
   configured automatically by default; use [`-a`/`--noauto`] to configure manually.
 {: #hisat2-build-options-bmax}
@@ -1221,7 +1199,7 @@ Usage:
 * -o/\--offrate `<int>`  
   To map alignments back to positions on the reference sequences, it's necessary
   to annotate ("mark") some or all of the [Burrows-Wheeler] rows with their
-  corresponding location on the genome. 
+  corresponding location on the genome.
   [`-o`/`--offrate`](#hisat2-build-options-o) governs how many rows get marked:
   the indexer will mark every 2^`<int>` rows.  Marking more rows makes
   reference-position lookups faster, but requires more memory to hold the
@@ -1256,7 +1234,7 @@ Usage:
 * \--snp `<path>`  
   Provide a list of SNPs (in the HISAT2's own format) as follows (five columns).  
   > SNP ID `<tab>` snp type (single, deletion, or insertion) `<tab>` chromosome name `<tab>` zero-offset based genomic position of a SNP `<tab>` alternative base (single), the length of SNP (deletion), or insertion sequence (insertion)
-   
+
   For example,  
   `rs58784443      single  13      18447947        T`  
 
@@ -1267,7 +1245,7 @@ Usage:
 * \--haplotype `<path>`  
   Provide a list of haplotypes (in the HISAT2's own format) as follows (five columns).
   > Haplotype ID `<tab>` chromosome name `<tab>` zero-offset based left coordinate of haplotype `<tab>` zero-offset based right coordinate of haplotype `<tab>` a comma separated list of SNP ids in the haplotype
-  
+
   For example,  
   `ht35    13      18446877        18446945        rs12381094,rs12381056,rs192016659,rs538569910`  
 
@@ -1345,7 +1323,7 @@ Usage:
   When printing FASTA output, output a newline character every `<int>` bases
   (default: 60).
 {: #hisat2-inspect-options-a}
- 
+
 * -n/\--names  
   Print reference sequence names, one per line, and quit.
 {: #hisat2-inspect-options-n}
@@ -1353,7 +1331,7 @@ Usage:
 
 * -s/\--summary  
   Print a summary that includes information about index settings, as well as the
-  names and lengths of the input sequences.  The summary has this format: 
+  names and lengths of the input sequences.  The summary has this format:
   ```
     Colorspace	<0 or 1>
     SA-Sample	1 in <sample>
