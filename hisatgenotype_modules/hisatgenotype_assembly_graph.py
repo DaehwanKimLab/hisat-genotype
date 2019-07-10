@@ -80,6 +80,31 @@ def get_mate_node_id(node_id):
     node_id2 = '|'.join([node_id2, end])
     return node_id2
 
+# Viterbi Algorithm for longest path:
+def viterbi_path(trellis, states):
+    vit = [[]]
+    endpath, best_score = [0,None], -sys.maxint
+    for i in trellis[0]:
+        vit[0].append({"weight" : trellis[0][i], "prev" : None})
+    for t in range(1, len(trellis)):
+        vit.append([])
+        for j in range(len(trellis[t])):
+            (weight, state) = max((vit[t-1][n] + trellis[t][j], n) for n in range(len(vit[t-1])))
+            if weight > best_score:
+                endpath, best_score = [t,j], weight
+            vit[t].append({"weight" : weight, "prev" : state})
+
+    path = []
+    while endpath[1] is not None:
+        t, node = endpath
+        path.append(states[t][node])
+
+        prev = vit[t][node]["prev"]
+        t -= 1
+        endpath = [t,prev]
+
+    return best_score, path
+
 
 
 class Node:
@@ -867,37 +892,38 @@ class Graph:
                 else:
                     try_hard = True
 
-        # Print De Bruijn graph TODO: add condition of if print_msg up at top
-        for i in range(len(debruijn)):
-            curr_vertices = debruijn[i]
-            if len(curr_vertices) == 0:
-                continue
-            consensus_seq = [{} for j in range(k)]
-            for v in range(len(curr_vertices)):
-                nt, k_m1_mer = curr_vertices[v][:2]
-                kmer = k_m1_mer + nt
-                assert len(kmer) == k
-                for j in range(k):
-                    nt = kmer[j]
-                    if nt not in consensus_seq[j]:
-                        consensus_seq[j][nt] = 1
-                    else:
-                        consensus_seq[j][nt] += 1
+        # Print De Bruijn graph
+        if print_msg:
+            for i in range(len(debruijn)):
+                curr_vertices = debruijn[i]
+                if len(curr_vertices) == 0:
+                    continue
+                consensus_seq = [{} for j in range(k)]
+                for v in range(len(curr_vertices)):
+                    nt, k_m1_mer = curr_vertices[v][:2]
+                    kmer = k_m1_mer + nt
+                    assert len(kmer) == k
+                    for j in range(k):
+                        nt = kmer[j]
+                        if nt not in consensus_seq[j]:
+                            consensus_seq[j][nt] = 1
+                        else:
+                            consensus_seq[j][nt] += 1
 
-            if print_msg: print >> sys.stderr, i
-            for v in range(len(curr_vertices)):
-                nt, k_m1_mer, predecessors, num_ids = curr_vertices[v]
-                kmer = k_m1_mer + nt
-                kmer_seq = ""
-                for j in range(k):
-                    nt = kmer[j]
-                    if len(consensus_seq[j]) >= 2:
-                        kmer_seq += "\033[94m"
-                    kmer_seq += nt
-                    if len(consensus_seq[j]) >= 2:
-                        kmer_seq += "\033[00m"
-                    
-                if print_msg: print >> sys.stderr, "\t%d:" % v, kmer_seq, len(num_ids), predecessors, num_ids
+                print >> sys.stderr, i
+                for v in range(len(curr_vertices)):
+                    nt, k_m1_mer, predecessors, num_ids = curr_vertices[v]
+                    kmer = k_m1_mer + nt
+                    kmer_seq = ""
+                    for j in range(k):
+                        nt = kmer[j]
+                        if len(consensus_seq[j]) >= 2:
+                            kmer_seq += "\033[94m"
+                        kmer_seq += nt
+                        if len(consensus_seq[j]) >= 2:
+                            kmer_seq += "\033[00m"
+                        
+                    print >> sys.stderr, "\t%d:" % v, kmer_seq, len(num_ids), predecessors, num_ids
 
         id_to_num = {} # Regenerate new ID_to_num
         for num in range(len(num_to_id)):
@@ -1037,33 +1063,96 @@ class Graph:
         # Compress and phase de Bruijn to allele
         known_alleles = False
         while True:
-            for i in range(len(equiv_list)): # TODO add if print_msg
-                classes = equiv_list[i]
-                for j in range(len(classes)):
-                    ids, num_ids, all_ids, alleles = classes[j]
-                    if print_msg: print >> sys.stderr, i, j, ids, len(num_ids), sorted(list(num_ids))[:20], alleles
-
-                if print_msg: print >> sys.stderr
-
-            # Collapse nodes to reference
-            if known_alleles: 
+            if print_msg:
                 for i in range(len(equiv_list)):
                     classes = equiv_list[i]
                     for j in range(len(classes)):
-                        num_ids = sorted(list(classes[j][1]))
-                        node_id = "(%d-%d)%s" % (i, j, num_to_id[num_ids[0]])
-                        node = self.nodes2[node_id]
-                        node_vars = node.get_var_ids()
-                        max_alleles, max_common = set(), -sys.maxint
-                        for anode in self.predicted_allele_nodes.values():
-                            allele_vars = anode.get_var_ids(node.left, node.right)
-                            tmp_common = len(set(node_vars) & set(allele_vars)) - len(set(node_vars) | set(allele_vars))
-                            if tmp_common > max_common:
-                                max_common = tmp_common
-                                max_alleles = set([anode.id])
-                            elif tmp_common == max_common:
-                                max_alleles.add(anode.id)
-                        classes[j][3] = max_alleles
+                        ids, num_ids, all_ids, alleles = classes[j]
+                        print >> sys.stderr, i, j, ids, len(num_ids), sorted(list(num_ids))[:20], alleles
+
+                    print >> sys.stderr
+
+            # Collapse nodes to reference (annotation)
+            def annotate_contig(viterbi = False):
+                if viterbi:
+                    def jaccard(setA, setB):
+                        setA, setB = set(setA), set(setB)
+                        inter = len(setA & setB)+1
+                        union = len(setA | setB)+1
+                        return math.log10(float(inter)/float(union))
+
+                    # TODO: Work in progress building maximixing path
+                    alleles = self.predicted_allele_nodes.keys()
+                    vitres = {'key' : [], 'value' : [], 'path' : []}
+
+                    anodes = [None, None]
+                    for i in range(len(alleles)):
+                        anodes[0] = self.predicted_allele_nodes[alleles[i]]
+
+                        for j in range(i,len(alleles)):
+                            vitres['key'].append([alleles[i], alleles[j]])                            
+                            anodes[1] = self.predicted_allele_nodes[alleles[j]]
+                            trellis, states = [], []
+
+                            for k in range(len(equiv_list)):
+                                classes = equiv_list[k]
+                                mx = []
+                                for l in classes:
+                                    mx.append([])
+                                    num_id = sorted(list(classes[l][1]))[0]
+                                    node_id = "(%d-%d)%s" % (k, l, num_to_id[num_id])
+                                    node = self.nodes2[node_id]
+
+                                    node_vars = node.get_var_ids()
+                                    for m in range(len(anodes)):
+                                        allele_vars = anodes[m].get_var_ids(node.left, node.right)
+                                        mx[-1].append(jaccard(node_vars, allele_vars))
+
+                                assert mx
+                                if len(mx) > 1:
+                                    state = [[0,1],[1,0]]
+                                    mx = list(map(sum, mx[0], mx[1][::-1]))
+                                else:
+                                    state = [[0,0], [0,0]]
+                                    mx = mx[0]
+                                states.append(state)
+                                trellis.append(mx)
+
+                            score, path = viterbi_path(trellis, states)
+                            vitres['path'].append(path)
+                            vitres['value'].append(score)
+
+                    ix = max(range(len(vitres['value'])), key=vitres['value'].__getitem__)
+                    best_alleles, best_path = vitres['key'][ix], vitres['path'][ix]
+
+                    assert len(best_path) == len(equiv_list)
+                    for i in range(len(equiv_list)):
+                        classes = equiv_list[i]
+                        for j in range(len(best_path[i])):
+                            if best_alleles[j] not in classes[best_path[i][j]][3]:
+                                classes[best_path[i][j]][3].append(best_alleles[j])
+
+                else:
+                    for i in range(len(equiv_list)):
+                        classes = equiv_list[i]
+                        for j in range(len(classes)):
+                            num_ids = sorted(list(classes[j][1]))
+                            node_id = "(%d-%d)%s" % (i, j, num_to_id[num_ids[0]])
+                            node = self.nodes2[node_id]
+                            node_vars = node.get_var_ids()
+                            max_alleles, max_common = set(), -sys.maxint
+                            for anode in self.predicted_allele_nodes.values():
+                                allele_vars = anode.get_var_ids(node.left, node.right)
+                                tmp_common = len(set(node_vars) & set(allele_vars)) - len(set(node_vars) | set(allele_vars))
+                                if tmp_common > max_common:
+                                    max_common = tmp_common
+                                    max_alleles = set([anode.id])
+                                elif tmp_common == max_common:
+                                    max_alleles.add(anode.id)
+                            classes[j][3] = max_alleles
+
+            if known_alleles:
+                annotate_contig(False)
 
             # Identify identical stretches of nodes to merge
             best_common_mat, best_stat, best_i, best_i2 = [], -sys.maxint, -1, -1
@@ -1110,7 +1199,7 @@ class Graph:
                 self.remove_nodes(self.nodes2)
                 break
 
-            # Compress nodes    
+            # Compress nodes: Collapse nodes to contigs 
             if best_stat < 0: 
                 known_alleles = True
                 new_nodes = {}
@@ -1154,7 +1243,7 @@ class Graph:
                     new_mat.append(row)
                 return classes[:c] + classes[c+1:], new_mat
                 
-            assert len(classes) <= 2 and len(classes2) <= 2
+            assert len(classes) <= 2 and len(classes2) <= 2 ## Forcing Collapse to at most two alleles
             if len(classes) == 2 and len(classes2) == 2:
                 # Check row
                 num_ids1, num_ids2 = len(classes[0][1]), len(classes[1][1])
@@ -1276,6 +1365,7 @@ class Graph:
             equiv_list[best_i] = classes            
             equiv_list = equiv_list[:best_i2] + equiv_list[best_i2+1:]
             
+            # Phasing to allele
             if known_alleles:
                 exclude_ids = set()
                 new_nodes = {}
