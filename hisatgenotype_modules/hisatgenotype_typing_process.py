@@ -592,6 +592,7 @@ def extract_vars(base_fname,
                 if next_exon_len >= len(ref_partial_seq_map):
                     print >> sys.stderr, "Warning: partial sequences (%s) seem to be incomplete" % gene
                     complete = False
+                    seq_len = find_seq_len(seqs)
                     break
                 ref_partial_exons.append([ref_partial_seq_map[exon_len], ref_partial_seq_map[next_exon_len]])
                 exon_len += (right - left + 1)
@@ -683,6 +684,7 @@ def extract_vars(base_fname,
             for i in range(len(seqs)):
                 seqs[i] = typing_common.reverse_complement(seqs[i])
             backbone_seq, backbone_freq = create_consensus_seq(seqs, seq_len, min_var_freq, True)
+            seq_len = find_seq_len(seqs)
 
         if leftshift:
             for seq_i in range(len(seqs)):
@@ -1402,11 +1404,13 @@ def extract_reads(base_fname,
                         usr_input = ''
                         while True:
                             usr_input = raw_input("Continue? (y/n): ")
-                            if usr_input == "y":
+                            if usr_input in ["y", "Y", "Yes", "yes"]:
                                 break
-                            if usr_input == "n":
+                            elif usr_input in ["n", "N", "No", "no"]:
                                 print "Exiting"
                                 exit(1)
+                            else:
+                                print "Improper Entry. Use y or n"
 
                     if common[-1] in "._-":
                         common = common[:-1]
@@ -1450,7 +1454,10 @@ def extract_reads(base_fname,
                 continue
 
         if paired:
-            fq_fname_base = paired_fq_basen[file_i]
+            if len(read_fname) > 0:
+                fq_fname_base = fq_fname.split('/')[-1]
+            else:
+                fq_fname_base = paired_fq_basen[file_i]
         else:
             fq_fname_base = fq_fname.split('/')[-1].split('.')[0]
             
@@ -1484,6 +1491,7 @@ def extract_reads(base_fname,
                  ranges,
                  simulation,
                  verbose):
+            
             aligner_cmd = [aligner]
             if threads_aprocess > 1:
                 aligner_cmd += ["-p", "%d" % threads_aprocess]
@@ -1501,6 +1509,7 @@ def extract_reads(base_fname,
                 aligner_cmd += ["-U", fq_fname]
             if verbose:
                 print >> sys.stderr, "\t\trunning", ' '.join(aligner_cmd)
+
             align_proc = subprocess.Popen(aligner_cmd,
                                           stdout=subprocess.PIPE,
                                           stderr=open("/dev/null", 'w'))

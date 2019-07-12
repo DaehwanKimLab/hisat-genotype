@@ -1116,11 +1116,9 @@ def typing(simulation,
 
                                 # DK - debugging purposes
                                 # for cmpt, count in Gene_primary_exons_count_per_read.items():
-                                if cur_primary_exons_cmpt.find("A*24:145") != -1 and cur_primary_exons_cmpt.find("A*24:02:01") == -1:
-                                    print prev_read_id
-                                    print cur_primary_exons_cmpt
-        
-
+                                #if cur_primary_exons_cmpt.find("A*24:145") != -1 and cur_primary_exons_cmpt.find("A*24:02:01") == -1:
+                                #    print prev_read_id
+                                #    print cur_primary_exons_cmpt
             
                                 cur_exons_cmpt = add_stat(Gene_exons_cmpt, Gene_exons_counts, Gene_exons_count_per_read, allele_rep_set)
                                 cur_cmpt = add_stat(Gene_cmpt, Gene_counts, Gene_count_per_read)
@@ -2031,7 +2029,7 @@ def genotyping_locus(base_fname,
     if ',' in base_fname:
         print >> sys.stderr, "Don't use list in hisatgenotype_locus"
         exit(1)
-        
+    
     simulation = (read_fname == [] and alignment_fname == "")
     if genotype_genome == "":
         if not os.path.exists("hisatgenotype_db"):
@@ -2130,7 +2128,7 @@ def genotyping_locus(base_fname,
     else:
         for line in open("%s.partial" % base_fname):
             partial_alleles.add(line.strip())
-
+    
     # Read alleles (names and sequences)
     refGenes, refGene_loci = {}, {}
     if base_fname == "genome":
