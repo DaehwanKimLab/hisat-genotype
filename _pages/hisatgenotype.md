@@ -7,7 +7,7 @@ share: false
 ---
 
 **HISAT-genotype** is a next-generation genomic analysis software platform capable of assembling and genotyping human genes and genomic regions. Thie software leverages **HISAT2**s graph FM index and graph alignemnt algorithm to align reads to a specially constructed graph genome. An Expectation-Maximization (EM) algorithm finds the maximum likelihood estimates for each gene allele and a guided de Bruijn graph is used to construct the allele sequences.  
-[__Get HISATgenotype__](https://github.com/DaehwanKimLab/hisat-genotype)
+[__Get HISAT-genotype__](https://github.com/DaehwanKimLab/hisat-genotype)
 
 ### News and Releases:
 
@@ -35,4 +35,4 @@ share: false
 
 ### Other links:
 [HISAT2](http://ccb.jhu.edu/software/hisat2/index.shtml), [github](https://github.com/DaehwanKimLab/hisat2)  
-[HISATgenotype FTP](ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat-genotype/data)
+[HISAT-genotype FTP](ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat-genotype/data)

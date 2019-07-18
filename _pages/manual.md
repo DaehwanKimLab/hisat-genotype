@@ -17,7 +17,7 @@ Using the human reference genome, referred to as the linear reference (e.g. GRCh
 
 ---
 
-# HISATgenotype Set-up
+# HISAT-genotype Set-up
 
 We use [HISAT2] for graph representation and alignment, which is currently the most practical and quickest program available. We refer to hisat-genotype as our top directory where all of our programs are located. hisat-genotype is a place holder that you can change to whatever name you’d like to use.
 
@@ -25,7 +25,7 @@ We use [HISAT2] for graph representation and alignment, which is currently the m
 
 ## Requirements
 
-HISATgenotype is encoded in python2 and contains standard python libraries. A
+HISAT-genotype is encoded in python2 and contains standard python libraries. A
 python 2.7 release is recommended. Additional software required is [Samtools]
 version 1.3 or later.
 
@@ -52,8 +52,8 @@ builds since these are coming already prepared with most of the toolchains neede
 [Xcode]: https://developer.apple.com/Xcode
 [Samtools]: https://www.htslib.org
 
-## Downloading HISATgenotype and Building HISAT2 from source
-This download example will place HISATgenotype in your home (~) directory if you are using a linux system. 
+## Downloading HISAT-genotype and Building HISAT2 from source
+This download example will place HISAT-genotype in your home (~) directory if you are using a linux system. 
 Change the ~ to whichever directory you desire if this is not the behavior you want.
 
 ```bash
@@ -63,7 +63,7 @@ hisat-genotype$ git checkout hisatgenotype_v1.1.2_beta
 $ make hisat2-align-s hisat2-build-s hisat2-inspect-s
 ```
 
-## Adding HISATgenotype to PATH
+## Adding HISAT-genotype to PATH
 Add the above directory (hisat-genotype) to your PATH environment variable
 (e.g. ~/.bashrc) to make the binaries built above and other python scripts
 available everywhere:
@@ -75,7 +75,7 @@ $ export PYTHONPATH=~/hisat-genotype/hisatgenotype_modules:$PYTHONPATH
 
 ---
 
-# Running HISATgenotype 
+# Running HISAT-genotype 
 
 ## Past Manuals
 
@@ -119,8 +119,8 @@ The hisatgenotype.py python script will analyze a whole human genome using whole
 > Example: `--keep-alignment`
 
 * **\--in-dir** | *Default* : *None*  
-> Directory HISATgenotpye will search for FASTQ(A) files and batch process. HISATgenotype will attempt to automatically pair the files if `--single-end` isn't set.
-> Try to have the names be similar between the pairs with a single difference to make it easier for HISATgenotype to pair the files (e.g. *hg_granulocyte_samp1_L.fastq* and *hg_granulocyte_samp1_R.fastq*)  
+> Directory HISATgenotpye will search for FASTQ(A) files and batch process. HISAT-genotype will attempt to automatically pair the files if `--single-end` isn't set.
+> Try to have the names be similar between the pairs with a single difference to make it easier for HISAT-genotype to pair the files (e.g. *hg_granulocyte_samp1_L.fastq* and *hg_granulocyte_samp1_R.fastq*)  
 > Example: `--in-dir input_fastq_dir`
 
 * **\--out-dir** | *Default* : `/hisatgenotype_out`  
