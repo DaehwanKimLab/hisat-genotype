@@ -371,6 +371,8 @@ def build_genotype_genome(base_fname,
     coord_out_file.close()
     clnsig_out_file.close()
 
+    exit(0)
+
     allele_out_file = open("%s.allele" % base_fname, 'w')
     if graph_index:
         for database in database_list:

@@ -352,6 +352,7 @@ def extract_vars(base_fname,
             
     # Extract exon information from hla.data
     gene_exons, gene_exon_counts = {}, {}
+    dbversion = open("hisatgenotype_db/VERSION", 'r').read()
     if base_fname in spliced_gene:        
         skip, look_exon_num = False, False
         for line in open("hisatgenotype_db/%s/%s.dat" % (base_fname.upper(), base_fname)):
@@ -430,7 +431,10 @@ def extract_vars(base_fname,
     allele_file = open("%s.allele" % base_fullpath_name, 'w')
     # Read partial alleles from hla.data, and write them into a file
     partial_file = open("%s.partial" % base_fullpath_name, 'w')
-    
+    # Write HISATgenotype Database version into file
+    with open("%s.version" % base_fullpath_name, 'w') as fnversion:
+        fnversion.write('Database %s derived from HISATgenotype DB version: %s' % (base_fullpath_name, dbversion))
+
     num_vars, num_haplotypes = 0, 0
     full_alleles = {}
     for gene, ref_gene in genes.items():

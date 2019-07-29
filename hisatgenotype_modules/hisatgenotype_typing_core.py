@@ -248,6 +248,7 @@ def typing(simulation,
            verbose,
            assembly_verbose,
            out_dir,
+           dbversion,
            test_i = 0):
 
     core_fid = "" # May add to bottom of options
@@ -258,6 +259,16 @@ def typing(simulation,
         core_fid = read_fname[0].split('/')[-1].split('.')[0]
         report_file = open('%s/%s-%s-%s.report' % (out_dir, output_base, base_fname, core_fid), 'w')
     
+    # Add version and command info to all report files
+    version_file = '/'.join(os.path.dirname(__file__).split('/')[:-1]) + '/VERSION'
+    version_info = open(version_file, 'r').read()
+    cmd_call = ' '.join(sys.argv)
+
+    print >> report_file, "# VERSIONS:\n%s" % version_info
+    print >> report_file, "# %s" % dbversion
+    print >> report_file, "# COMMAND:\n%s" % cmd_call
+
+    # Begin Alignment for typing
     for aligner, index_type in aligners:
         for f_ in [sys.stderr, report_file]:
             if index_type == "graph":
@@ -1562,7 +1573,7 @@ def typing(simulation,
                 begin_y += 200
                 
                 # Apply De Bruijn graph
-                asm_graph.guided_DeBruijn(assembly_verbose)
+                viturbi_allelecall = asm_graph.guided_DeBruijn(assembly_verbose)
 
                 # Draw assembly graph
                 begin_y = asm_graph.draw(begin_y, "b. Assembly")
@@ -1829,6 +1840,10 @@ def typing(simulation,
 
         if not keep_alignment and remove_alignment_file:
             os.system("rm %s*" % (alignment_fname))
+
+    if assembly:
+        for f_ in [sys.stderr, report_file]:
+            print >> f_, "\t\tViturbi Coloring Allele Collapse: %s (Group score (0-1): %d)" % (' : '.join(viturbi_allelecall[0]), 10**viturbi_allelecall[1])
 
     report_file.close()
     if simulation:
@@ -2106,6 +2121,15 @@ def genotyping_locus(base_fname,
         try: lock.release()
         except: pass
 
+    # Get database version if exsists
+    dbversion = ''
+    if genotype_genome != '':
+        if os.path.exists(genotype_genome + ".version"):
+            dbversion = open(genotype_genome + ".version", 'r').read()
+    else:
+        if os.path.exists(base_fname + ".version"):
+            dbversion = open(base_fname + ".version", 'r').read()
+
     # Read alleles
     alleles = set()
     if genotype_genome != "":
@@ -2335,6 +2359,7 @@ def genotyping_locus(base_fname,
                                      verbose,
                                      assembly_verbose,
                                      out_dir,
+                                     dbversion,
                                      test_i)
 
             for aligner_type, passed in tmp_test_passed.items():
@@ -2388,5 +2413,6 @@ def genotyping_locus(base_fname,
                best_alleles,
                verbose,
                assembly_verbose,
-               out_dir)
+               out_dir,
+               dbversion)
 

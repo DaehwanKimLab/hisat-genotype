@@ -58,22 +58,23 @@ def string_slice(string, pos):
 """
 def read_genome(genome_file):
     chr_dic, chr_names, chr_full_names = {}, [], []
+
+    seqs = open(genome_file, 'r').read()
+    seqs = seqs.strip('\n').split('>')[1:]
+
     chr_name, chr_full_name, sequence = "", "", ""
-    for line in genome_file:
-        if line.startswith(">"):
-            if chr_name and sequence:
-                chr_dic[chr_name] = sequence
-                chr_names.append(chr_name)
-            chr_full_name = line.strip()[1:]
-            chr_name = line.strip().split()[0][1:]
-            chr_full_names.append(chr_full_name)
-            sequence = ""
-        else:
-            sequence += line.strip()
-    if chr_name and sequence:
+    while seqs:
+        ix = seqs[0].find('\n')
+
+        chr_full_name, sequence = seqs[0][:ix], seqs[0][ix:].replace('\n','')
+        chr_name = chr_full_name.split()[0]
+
         chr_dic[chr_name] = sequence
         chr_names.append(chr_name)
         chr_full_names.append(chr_full_name)
+
+        seqs.pop(0)
+    
     return chr_dic, chr_names, chr_full_names
 
 

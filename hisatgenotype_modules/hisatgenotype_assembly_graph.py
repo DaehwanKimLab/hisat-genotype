@@ -82,18 +82,30 @@ def get_mate_node_id(node_id):
 
 # Viterbi Algorithm for longest path:
 def viterbi_path(trellis, states):
-    vit = [[]]
-    endpath, best_score = [0,None], -sys.maxint
-    for i in trellis[0]:
+    vit, endpath = [[]], [-1,None]
+
+    #initialize path
+    node_score = -sys.maxint
+    for i in range(len(trellis[0])):
+        weight = trellis[0][i]
+        if weight > node_score:
+            endpath, node_score = [0,i], weight
         vit[0].append({"weight" : trellis[0][i], "prev" : None})
+    
+    #extend path
     for t in range(1, len(trellis)):
         vit.append([])
+
+        node_score = -sys.maxint
         for j in range(len(trellis[t])):
-            (weight, state) = max((vit[t-1][n] + trellis[t][j], n) for n in range(len(vit[t-1])))
-            if weight > best_score:
-                endpath, best_score = [t,j], weight
+            (weight, state) = max((vit[t-1][n]['weight'] + trellis[t][j], n) for n in range(len(vit[t-1])))
+            if weight > node_score:
+                endpath, node_score = [t,j], weight
             vit[t].append({"weight" : weight, "prev" : state})
 
+    assert endpath[1] is not None
+
+    # Backtrace Path
     path = []
     while endpath[1] is not None:
         t, node = endpath
@@ -103,8 +115,7 @@ def viterbi_path(trellis, states):
         t -= 1
         endpath = [t,prev]
 
-    return best_score, path
-
+    return node_score, path
 
 
 class Node:
@@ -1039,7 +1050,7 @@ class Graph:
             equiv_list.append([])
             for i in range(p, p2):
                 left, right, num_ids = paths[i]
-                equiv_list[-1].append([[i], num_ids, num_ids | get_mate_num_ids(num_ids), []])
+                equiv_list[-1].append([[i], num_ids, num_ids | get_mate_num_ids(num_ids), set()])
                 if p + 1 < p2:
                     assert p + 2 == p2
                     excl_num_ids |= num_ids
@@ -1074,6 +1085,7 @@ class Graph:
 
             # Collapse nodes to reference (annotation)
             def annotate_contig(viterbi = False):
+                # Phasing Algorithm based on graph coloring and the principles behind viturbi algorithm
                 if viterbi:
                     def jaccard(setA, setB):
                         setA, setB = set(setA), set(setB)
@@ -1086,6 +1098,7 @@ class Graph:
                     vitres = {'key' : [], 'value' : [], 'path' : []}
 
                     anodes = [None, None]
+                    # For all allele pairs ...
                     for i in range(len(alleles)):
                         anodes[0] = self.predicted_allele_nodes[alleles[i]]
 
@@ -1094,24 +1107,31 @@ class Graph:
                             anodes[1] = self.predicted_allele_nodes[alleles[j]]
                             trellis, states = [], []
 
+                            # ... go through length of all contigs across allele ...
                             for k in range(len(equiv_list)):
                                 classes = equiv_list[k]
                                 mx = []
-                                for l in classes:
+
+                                # ... and for each contig at a position ...
+                                for l in range(len(classes)):
                                     mx.append([])
+
                                     num_id = sorted(list(classes[l][1]))[0]
                                     node_id = "(%d-%d)%s" % (k, l, num_to_id[num_id])
                                     node = self.nodes2[node_id]
-
                                     node_vars = node.get_var_ids()
+                                    
+                                    # ... compair the contig to the allele region the contig aligns to
                                     for m in range(len(anodes)):
                                         allele_vars = anodes[m].get_var_ids(node.left, node.right)
                                         mx[-1].append(jaccard(node_vars, allele_vars))
 
+                                # The add the comparison to a trellis graph
                                 assert mx
                                 if len(mx) > 1:
                                     state = [[0,1],[1,0]]
-                                    mx = list(map(sum, mx[0], mx[1][::-1]))
+                                    mx[1] = mx[1][::-1]
+                                    mx = [sum(k) for k in zip(*mx)] # Find best value for pair
                                 else:
                                     state = [[0,0], [0,0]]
                                     mx = mx[0]
@@ -1123,15 +1143,18 @@ class Graph:
                             vitres['value'].append(score)
 
                     ix = max(range(len(vitres['value'])), key=vitres['value'].__getitem__)
-                    best_alleles, best_path = vitres['key'][ix], vitres['path'][ix]
+                    best_alleles, best_path, best_score = vitres['key'][ix], vitres['path'][ix], vitres['value'][ix]
 
                     assert len(best_path) == len(equiv_list)
                     for i in range(len(equiv_list)):
                         classes = equiv_list[i]
                         for j in range(len(best_path[i])):
                             if best_alleles[j] not in classes[best_path[i][j]][3]:
-                                classes[best_path[i][j]][3].append(best_alleles[j])
+                                classes[best_path[i][j]][3].add(best_alleles[j])
 
+                    return [best_alleles, best_score]
+
+                # Alternative phasing algorithm
                 else:
                     for i in range(len(equiv_list)):
                         classes = equiv_list[i]
@@ -1152,7 +1175,7 @@ class Graph:
                             classes[j][3] = max_alleles
 
             if known_alleles:
-                annotate_contig(False)
+                v_coloring = annotate_contig(True) # Use Viturbi coloring
 
             # Identify identical stretches of nodes to merge
             best_common_mat, best_stat, best_i, best_i2 = [], -sys.maxint, -1, -1
@@ -1403,8 +1426,12 @@ class Graph:
                     new_nodes[node_id] = node
                         
                 self.nodes2 = new_nodes
-            
         
+        if known_alleles:
+            return v_coloring
+        else:
+            return [['No Known alleles to match'], -1]
+
     # Display graph information
     def print_info(self): 
         print >> sys.stderr, "Backbone len: %d" % len(self.backbone)
