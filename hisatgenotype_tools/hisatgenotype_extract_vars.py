@@ -89,6 +89,7 @@ if __name__ == '__main__':
                                args.leftshift,
                                args.partial,
                                args.verbose))
+
     pool.close()
     pool.join()
 

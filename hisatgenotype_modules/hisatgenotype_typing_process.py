@@ -665,9 +665,23 @@ def extract_vars(base_fname,
             ref_gene = collapsed[ref_gene]
             genes[gene] = ref_gene
 
+        # Check for empty sequences or omitted nucleotides. This can be empty if there is a problem with the database.
+        # Solution is to omit the offending gene from the database to prevent premature termination of database build.
         if min_var_freq <= 0.0:
-            assert '.' not in backbone_seq and 'E' not in backbone_seq and '~' not in backbone_seq, '~ E or . in backbone of %s which is not allowed with no minimum variation set' % gene
-        
+            omits = ['.', 'E', '~']
+            breakout = False
+
+            for omit in omits:
+                if omit in backbone_seq:
+                    if verbose:
+                        print '%s in backbone of %s with no minimum variation set' % (omit, gene)
+                    print 'Error in database: Omitting %s!!' % (gene)
+                    breakout = True
+                    break
+
+            if breakout:
+                continue
+
         # Reverse complement MSF if this gene is on '-' strand
         if strand == '-':
             # Reverse exons
