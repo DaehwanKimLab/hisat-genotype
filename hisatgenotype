@@ -335,8 +335,18 @@ def extract_bam(file_lists,
 """
 """
 if __name__ == '__main__':
+    version_file = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/VERSION'
+    version_info = []
+    try:
+        with open(version_file, 'r') as vfi:
+            for line in vfi:
+                line = line.strip().split()
+                version_info.append(line[1])
+    except:
+        version_info = ['', '']
+
     parser = ArgumentParser(
-        description='HISAT-Genotype v1.1.2 (Built on HISAT2 v2.1.0)',
+        description='HISAT-Genotype %s (Built on HISAT2 %s)' % (version_info[1], version_info[0]),
         epilog='See --advanced-help for further options available')
     arguments.args_databases(parser,
                              genome=True) # Add option to change genome name
