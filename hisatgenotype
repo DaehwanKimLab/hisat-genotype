@@ -354,10 +354,17 @@ if __name__ == '__main__':
                                   keep=True) # Add option to keep alignments
     arguments.args_input_output(parser)                              
     arguments.args_bamfile(parser)
+    parser.add_argument('--pass-extract',
+                        dest='already_extract',
+                        action='store_true',
+                        help='Skip read extraction if the read files input are already extracted by --base'
+                        )
     arguments.args_single_end(parser)
     arguments.args_assembly(parser)
     arguments.args_common(parser)
- 
+
+
+
     parser_advanced = ArgumentParser(
         description='Advanced Options',
         add_help=False)
@@ -388,7 +395,7 @@ if __name__ == '__main__':
                                  help="Test database or code (options: basic, pair, full, single-end, test_list, test_id)(e.g., test_id:10,basic)"
                                  )
 
-    
+    ## Setup arguments into a new namespace for parsing
     arg_dict, unknown = {}, []
     args2, unused = parser_advanced.parse_known_args()
     args1 = parser.parse_args(unused)
@@ -397,6 +404,10 @@ if __name__ == '__main__':
 
     args = Namespace(**arg_dict)
 
+    """ 
+    Arg parsing and system state set-up ##################################
+    """ 
+    # Begin parsing bases and locus lists into a single variable: region_list
     region_list = {}
     args.base_fname = args.base_fname.lower().split(',') if args.base_fname != "" else []
     args.locus_list = args.locus_list.upper().split(';') if args.locus_list != "" else []
@@ -414,12 +425,14 @@ if __name__ == '__main__':
             loci_names = []
 
         region_list.update({ family : loci_names })
-        
+    
+    # Confirm correct aligner and set block_size
     if args.aligner not in ["hisat2", "bowtie2"]:
         print >> sys.stderr, "Error: --aligner should be either hisat2 or bowtie2."
         sys.exit(1)        
     block_size = 20000000 if args.extract_whole else 0
 
+    # set only_locus_list filter for extracting the database (used in typing_common.extract_database_if_not_exists)
     if args.only_locus_list == "":
         only_locus_list = []
     else:
@@ -429,6 +442,7 @@ if __name__ == '__main__':
     if args.verbose and args.verbose_level == 0:
         args.verbose_level = 1
 
+    # Parse debug options and parameters
     debug = {}
     debug_opts = ["basic", "full", "pair", "test_list", "test_id", "single-end"]
     if args.debug != "":
@@ -447,6 +461,7 @@ if __name__ == '__main__':
             else:
                 continue
 
+    # Advanced setting alerts for users
     if not args.partial:
         print >> sys.stderr, "Warning: --no-partial should be used for debugging purpose only."
 
@@ -464,11 +479,17 @@ if __name__ == '__main__':
             prev_left, prev_right = left, right
             skip_fragment_regions.append([left, right])
 
+    # Set display alleles for assembly
     if args.display_alleles == "":
         display_alleles = []
     else:
         display_alleles = args.display_alleles.split(',')
 
+    # Critical since this will preserve the input files after bypass of read extraction
+    if args.already_extract:
+        args.keep_extract = True
+
+    # Set default output and make final changes before beginning
     if args.out_dir == "":
         args.out_dir = os.getcwd()
         args.out_dir += "/hisatgenotype_out"
@@ -514,43 +535,48 @@ if __name__ == '__main__':
                 print >> sys.stderr, "Error: Don't set --single-end when using -1 and -2 options."
                 exit(1)
 
-        if not is_bam:
-            job_range = []
-            for num in args.job_range.split(','):
-                job_range.append(int(num))
+        if not args.already_extract:
+            if not is_bam:
+                job_range = []
+                for num in args.job_range.split(','):
+                    job_range.append(int(num))
 
-            fq_fname_base = extract_reads(args.genotype_genome if args.genotype_genome != '' else 'genotype_genome',
-                                          args.base_fname,
-                                          "" if single_run else args.read_dir,
-                                          args.out_dir,
-                                          args.suffix,
-                                          read_fnames,
-                                          args.fastq,
-                                          paired,
-                                          args.simulation,
-                                          args.threads,
-                                          args.threads_aprocess,
-                                          args.max_sample,
-                                          job_range,
-                                          args.aligner,
-                                          block_size,
-                                          args.verbose)
+                fq_fname_base = extract_reads(args.genotype_genome if args.genotype_genome != '' else 'genotype_genome',
+                                            args.base_fname,
+                                            "" if single_run else args.read_dir,
+                                            args.out_dir,
+                                            args.suffix,
+                                            read_fnames,
+                                            args.fastq,
+                                            paired,
+                                            args.simulation,
+                                            args.threads,
+                                            args.threads_aprocess,
+                                            args.max_sample,
+                                            job_range,
+                                            args.aligner,
+                                            block_size,
+                                            args.verbose)
+            else:
+                pool = multiprocessing.Pool(int(args.threads), initializer=init, initargs=(l,))
+                for bam_file in alignment_fnames:
+                    pool.apply_async(extract_bam,
+                                    args = (fq_fname_base,
+                                            args.genotype_genome if args.genotype_genome != '' else 'genotype_genome',
+                                            args.out_dir,
+                                            region_list,
+                                            args.fastq,
+                                            args.paired,
+                                            args.alignment_fname,
+                                            args.aligner,
+                                            args.verbose))
+                pool.close()
+                pool.join()
         else:
-            pool = multiprocessing.Pool(int(args.threads), initializer=init, initargs=(l,))
-            for bam_file in alignment_fnames:
-                pool.apply_async(extract_bam,
-                                args = (fq_fname_base,
-                                        args.genotype_genome if args.genotype_genome != '' else 'genotype_genome',
-                                        args.out_dir,
-                                        region_list,
-                                        args.fastq,
-                                        args.paired,
-                                        args.alignment_fname,
-                                        args.aligner,
-                                        args.verbose))
-            pool.close()
-            pool.join()
-    
+            _, _, filename_base = typing_common.get_filename_match(read_fnames)
+            for base in args.base_fname:
+                fq_fname_base[base] = filename_base
+
         assert fq_fname_base
 
     """
@@ -586,6 +612,7 @@ if __name__ == '__main__':
         if args.debug == '':
             print >> sys.stderr, "No --debug or -U -1 -2 --read-dir options set"
             exit(1)
+
         for base, loci in region_list.items():
             if base == "ALL":
                 base, loci = [], []
@@ -622,17 +649,20 @@ if __name__ == '__main__':
     else:
         # DB TODO: Pickling error with this step. Right now no assert error are seen without this
         #genotyping_locus = traceback_unhandled_exceptions(genotyping_locus)
-        pool = multiprocessing.Pool(int(args.threads), initializer=init, initargs=(l,))
+        #pool = multiprocessing.Pool(int(args.threads), initializer=init, initargs=(l,))
         for base, file_list in fq_fname_base.items():
             for fname in file_list:
-                fasta_fname = glob.glob("%s/%s*" % (args.out_dir, fname))
+                if args.already_extract:
+                    fasta_fname = glob.glob("%s*" % (fname))
+                else:
+                    fasta_fname = glob.glob("%s/%s*" % (args.out_dir, fname))
+
                 assert len(fasta_fname) < 3, "Too many files found"
                 for fname in fasta_fname:
                     discard_list.add(fname)
 
                 locus_list = region_list[base] if "ALL" not in region_list else []
-                pool.apply_async(genotyping_locus,
-                                 args = (base,
+                genotyping_locus(base,
                                      locus_list,
                                      args.genotype_genome,
                                      only_locus_list,
@@ -661,9 +691,9 @@ if __name__ == '__main__':
                                      args.verbose_level,
                                      args.assembly_verbose,
                                      args.out_dir,
-                                     debug))
-        pool.close()
-        pool.join()
+                                     debug)
+        #pool.close()
+        #pool.join()
 
     if not args.keep_extract:
         for fname in discard_list:

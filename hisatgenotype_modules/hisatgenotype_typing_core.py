@@ -296,7 +296,8 @@ def typing(simulation,
                                       threads,
                                       alignment_fname,
                                       verbose)
-            
+        
+        viterbi_calls = {}
         for test_Gene_names in locus_list:
             if base_fname == "genome":
                 if simulation:
@@ -310,6 +311,7 @@ def typing(simulation,
                 else:
                     gene = test_Gene_names
                 
+            viterbi_calls[gene] = []
             ref_allele = refGenes[gene]
             ref_seq = Genes[gene][ref_allele]
             ref_locus = refGene_loci[gene]
@@ -1573,7 +1575,7 @@ def typing(simulation,
                 begin_y += 200
                 
                 # Apply De Bruijn graph
-                viturbi_allelecall = asm_graph.guided_DeBruijn(assembly_verbose)
+                viterbi_calls[gene] = asm_graph.guided_DeBruijn(assembly_verbose)
 
                 # Draw assembly graph
                 begin_y = asm_graph.draw(begin_y, "b. Assembly")
@@ -1843,7 +1845,9 @@ def typing(simulation,
 
     if assembly:
         for f_ in [sys.stderr, report_file]:
-            print >> f_, "\t\tViturbi Coloring Allele Collapse: %s (Group score (0-1): %d)" % (' : '.join(viturbi_allelecall[0]), 10**viturbi_allelecall[1])
+            print >> f_, "\t\tViterbi Coloring Allele Collapse:"
+            for genename, calls in viterbi_calls.items():
+                print >> f_, "\t\t\t%s: %s (Group score: %d)" % (genename, ' : '.join(calls[0]), calls[1])
 
     report_file.close()
     if simulation:
@@ -2304,7 +2308,8 @@ def genotyping_locus(base_fname,
                                                          perbase_errorrate,
                                                          perbase_snprate,
                                                          skip_fragment_regions,
-                                                         out_dir)
+                                                         out_dir,
+                                                         test_i)
 
             assert len(num_frag_list) == len(test_locus_list)
             for i_ in range(len(test_locus_list)):

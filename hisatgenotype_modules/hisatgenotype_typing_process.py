@@ -1408,43 +1408,6 @@ def extract_reads(base_fname,
         os.mkdir(out_dir)
 
     # Extract reads
-    def fn_match(fns): # Goal is to match file names in directory if paired
-        fnames, fnames2, fnbase = [], [], []
-        for i in range(0, len(fns), 2):
-            sets = fns[i:i+2]
-            fileL, fileR = sets
-            common = ''
-            for j in range(len(fileL)):
-                s = fileL[j]
-                if s != fileR[j]:
-                    if s not in "LR12":
-                        print "Potential Error: Paired-end mode is selected and files %s and %s have an unexpected character %s to mark left and right pairings" % (fileL, fileR, s)
-                        usr_input = ''
-                        while True:
-                            usr_input = raw_input("Continue? (y/n): ")
-                            if usr_input in ["y", "Y", "Yes", "yes"]:
-                                break
-                            elif usr_input in ["n", "N", "No", "no"]:
-                                print "Exiting"
-                                exit(1)
-                            else:
-                                print "Improper Entry. Use y or n"
-
-                    if common[-1] in "._-":
-                        common = common[:-1]
-                    break
-                common += s
-
-            if not common:
-                print "Error matching files %s and %s. Names don't match. Skipping inclusion" % (fileL, fileR)
-                continue
-
-            fnames.append(fileL)
-            fnames2.append(fileR)
-            fnbase.append(common)
-        
-        return fnames, fnames2, fnbase
-
     if len(read_fname) > 0:
         if paired:
             fq_fnames = [read_fname[0]]
@@ -1455,7 +1418,7 @@ def extract_reads(base_fname,
         fq_fnames = glob.glob("%s/*.%s" % (read_dir, suffix)) 
         fq_fnames = sorted(fq_fnames)
         if paired:
-            fq_fnames, fq_fnames2, paired_fq_basen = fn_match(fq_fnames)
+            fq_fnames, fq_fnames2, paired_fq_basen = typing_common.get_filename_match(fq_fnames)
         
         if len(fq_fnames) == 0:
             print "Error: no files identified in %s directory with suffix .%s" % (read_dir, suffix)

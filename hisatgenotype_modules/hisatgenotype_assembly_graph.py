@@ -81,7 +81,7 @@ def get_mate_node_id(node_id):
     return node_id2
 
 # Viterbi Algorithm for longest path:
-def viterbi_path(trellis, states):
+def viterbi_path(trellis, states, verbose = False):
     vit, endpath = [[]], [-1,None]
 
     #initialize path
@@ -95,10 +95,10 @@ def viterbi_path(trellis, states):
     #extend path
     for t in range(1, len(trellis)):
         vit.append([])
-
+        
         node_score = -sys.maxint
         for j in range(len(trellis[t])):
-            (weight, state) = max((vit[t-1][n]['weight'] + trellis[t][j], n) for n in range(len(vit[t-1])))
+            (weight, state) = max([(vit[t-1][n]['weight'] + trellis[t][j], n) for n in range(len(vit[t-1]))], key = lambda x : x[0])
             if weight > node_score:
                 endpath, node_score = [t,j], weight
             vit[t].append({"weight" : weight, "prev" : state})
@@ -115,7 +115,12 @@ def viterbi_path(trellis, states):
         t -= 1
         endpath = [t,prev]
 
-    return node_score, path
+    if verbose:
+        print "States: %s" % str(states)
+        print "Trellis: %s" % str(trellis)
+        print "Viterbi: %s" % str(vit)
+
+    return node_score, path[::-1]
 
 
 class Node:
@@ -1108,9 +1113,11 @@ class Graph:
                             trellis, states = [], []
 
                             # ... go through length of all contigs across allele ...
+                            node_IDs = []
                             for k in range(len(equiv_list)):
                                 classes = equiv_list[k]
                                 mx = []
+                                node_IDs.append([])
 
                                 # ... and for each contig at a position ...
                                 for l in range(len(classes)):
@@ -1120,7 +1127,7 @@ class Graph:
                                     node_id = "(%d-%d)%s" % (k, l, num_to_id[num_id])
                                     node = self.nodes2[node_id]
                                     node_vars = node.get_var_ids()
-                                    
+                                    node_IDs[-1].append(node_id)
                                     # ... compair the contig to the allele region the contig aligns to
                                     for m in range(len(anodes)):
                                         allele_vars = anodes[m].get_var_ids(node.left, node.right)
@@ -1128,6 +1135,7 @@ class Graph:
 
                                 # The add the comparison to a trellis graph
                                 assert mx
+
                                 if len(mx) > 1:
                                     state = [[0,1],[1,0]]
                                     mx[1] = mx[1][::-1]

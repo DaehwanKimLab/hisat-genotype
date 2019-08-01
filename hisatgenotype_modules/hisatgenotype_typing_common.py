@@ -391,7 +391,43 @@ def build_index_if_not_exists(base,
                 print >> sys.stderr, "Error: indexing HLA failed!"
                 sys.exit(1)
 
-                    
+# Goal is to match file names in directory if paired
+def get_filename_match(fns): 
+    fnames, fnames2, fnbase = [], [], []
+    for i in range(0, len(fns), 2):
+        sets = fns[i:i+2]
+        fileL, fileR = sets
+        common = ''
+        for j in range(len(fileL)):
+            s = fileL[j]
+            if s != fileR[j]:
+                if s not in "LR12":
+                    print "Potential Error: Paired-end mode is selected and files %s and %s have an unexpected character %s to mark left and right pairings" % (fileL, fileR, s)
+                    usr_input = ''
+                    while True:
+                        usr_input = raw_input("Continue? (y/n): ")
+                        if usr_input in ["y", "Y", "Yes", "yes"]:
+                            break
+                        elif usr_input in ["n", "N", "No", "no"]:
+                            print "Exiting"
+                            exit(1)
+                        else:
+                            print "Improper Entry. Use y or n"
+
+                if common[-1] in "._-":
+                    common = common[:-1]
+                break
+            common += s
+
+        if not common:
+            print "Error matching files %s and %s. Names don't match. Skipping inclusion" % (fileL, fileR)
+            continue
+
+        fnames.append(fileL)
+        fnames2.append(fileR)
+        fnbase.append(common)
+    
+    return fnames, fnames2, fnbase   
 
 ##################################################
 #   Read simulation and alignment
@@ -413,7 +449,8 @@ def simulate_reads(seq_dic,                       # seq_dic["A"]["A*24:36N"] = "
                    perbase_errorrate = 0.0,
                    perbase_snprate = 0.0,
                    skip_fragment_regions = [],
-                   out_dir = "."):
+                   out_dir = ".",
+                   test_i = 0):
     reads_1, reads_2 = [], []
     num_pairs = []
 
@@ -656,8 +693,10 @@ def simulate_reads(seq_dic,                       # seq_dic["A"]["A*24:36N"] = "
 
         # Write reads into a FASTA file
         def write_reads(reads, idx, out_dir):
-            mkdir_p('%s/dir_%s/dir_%s' % (out_dir, gene, str(allele_names).replace(", ", "_")))
-            read_file2 = open('%s/dir_%s/dir_%s/%s_input_%d.fa' % (out_dir, gene, str(allele_names).replace(", ", "_"), base_fname, idx), 'w')
+            read_directory = '%s/dir_%s/dir_test-%d_%s' % (out_dir, gene, test_i, '_'.join(allele_names).replace("*", "-"))
+
+            mkdir_p(read_directory)
+            read_file2 = open('%s/%s_input_%d.fa' % (read_directory, base_fname, idx), 'w')
             read_file = open('%s_input_%d.fa' % (base_fname, idx), 'w')
             for read_i in range(len(reads)):
                 query_name = "%d|%s_%s" % (read_i + 1, "LR"[idx-1], reads[read_i][1])
@@ -669,6 +708,7 @@ def simulate_reads(seq_dic,                       # seq_dic["A"]["A*24:36N"] = "
                 print >> read_file2, reads[read_i][0]
             read_file.close()
             read_file2.close()
+
         write_reads(reads_1, 1, out_dir)
         write_reads(reads_2, 2, out_dir)
 
