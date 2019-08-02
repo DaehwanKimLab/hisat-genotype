@@ -236,7 +236,7 @@ both: hisat2-align-s hisat2-align-l hisat2-build-s hisat2-build-l
 both-debug: hisat2-align-s-debug hisat2-align-l-debug hisat2-build-s-debug hisat2-build-l-debug
 
 DEFS=-fno-strict-aliasing \
-     -DHISAT2_VERSION="\"`cat VERSION`\"" \
+     -DHISAT2_VERSION="\"`head -1 VERSION`\"" \
      -DBUILD_HOST="\"`hostname`\"" \
      -DBUILD_TIME="\"`date`\"" \
      -DCOMPILER_VERSION="\"`$(CXX) -v 2>&1 | tail -1`\"" \
