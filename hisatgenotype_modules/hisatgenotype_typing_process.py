@@ -352,7 +352,12 @@ def extract_vars(base_fname,
             
     # Extract exon information from hla.data
     gene_exons, gene_exon_counts = {}, {}
-    dbversion = open("hisatgenotype_db/VERSION", 'r').read()
+    
+    if os.path.exists("hisatgenotype_db/VERSION"):
+        dbversion = open("hisatgenotype_db/VERSION", 'r').read()
+    else:
+        dbversion = "NONE"
+
     if base_fname in spliced_gene:        
         skip, look_exon_num = False, False
         for line in open("hisatgenotype_db/%s/%s.dat" % (base_fname.upper(), base_fname)):

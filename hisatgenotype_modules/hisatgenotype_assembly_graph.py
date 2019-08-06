@@ -1136,6 +1136,8 @@ class Graph:
                                 # The add the comparison to a trellis graph
                                 assert mx
 
+                                #print mx
+
                                 if len(mx) > 1:
                                     state = [[0,1],[1,0]]
                                     mx[1] = mx[1][::-1]
@@ -1146,9 +1148,14 @@ class Graph:
                                 states.append(state)
                                 trellis.append(mx)
 
+                            #print trellis
+                            #print states
+
                             score, path = viterbi_path(trellis, states)
                             vitres['path'].append(path)
                             vitres['value'].append(score)
+
+                    print vitres
 
                     ix = max(range(len(vitres['value'])), key=vitres['value'].__getitem__)
                     best_alleles, best_path, best_score = vitres['key'][ix], vitres['path'][ix], vitres['value'][ix]

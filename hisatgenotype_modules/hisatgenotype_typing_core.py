@@ -262,10 +262,13 @@ def typing(simulation,
     # Add version and command info to all report files
     version_file = '/'.join(os.path.dirname(__file__).split('/')[:-1]) + '/VERSION'
     version_info = open(version_file, 'r').read()
+    version_info = version_info.split('\n')
     cmd_call = ' '.join(sys.argv)
 
-    print >> report_file, "# VERSIONS:\n%s" % version_info
-    print >> report_file, "# %s" % dbversion
+    print >> report_file, "# VERSIONS:\n"
+    print >> report_file, "# HISAT2 - %s\n" % version_info[0]
+    print >> report_file, "# HISAT-genotype - %s\n" % version_info[1]
+    print >> report_file, "# Database - %s\n" % dbversion
     print >> report_file, "# COMMAND:\n%s" % cmd_call
 
     # Begin Alignment for typing
@@ -1847,7 +1850,10 @@ def typing(simulation,
         for f_ in [sys.stderr, report_file]:
             print >> f_, "\t\tViterbi Coloring Allele Collapse:"
             for genename, calls in viterbi_calls.items():
-                print >> f_, "\t\t\t%s: %s (Group score: %d)" % (genename, ' : '.join(calls[0]), calls[1])
+                if calls:
+                    print >> f_, "\t\t\t%s: %s (Group score: %.5f)" % (genename, ' : '.join(calls[0]), 10**calls[1])
+                else:
+                    print >> f_, "\t\t\t%s: NONE (Group score: NA)" % (genename)
 
     report_file.close()
     if simulation:
