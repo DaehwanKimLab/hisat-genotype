@@ -1443,7 +1443,7 @@ def extract_reads(base_fname,
             if len(read_fname) > 0:
                 fq_fname_base = fq_fname.split('/')[-1]
             else:
-                fq_fname_base = paired_fq_basen[file_i]
+                fq_fname_base = paired_fq_basen[file_i].split('/')[-1]
         else:
             fq_fname_base = fq_fname.split('/')[-1].split('.')[0]
             
