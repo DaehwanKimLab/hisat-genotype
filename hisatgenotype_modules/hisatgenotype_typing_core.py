@@ -1571,27 +1571,31 @@ def typing(simulation,
                 if simulation:
                     asm_graph.begin_draw("%s/%s-%d.%s.%s" % (out_dir, output_base, test_i+1, base_fname, gene))
                 else:
-                    asm_graph.begin_draw("%s/%s.%s.%s" % (out_dir, output_base, base_fname, gene))
+                    asm_graph.begin_draw("%s/%s-%s-%s-%s" % (out_dir, output_base, base_fname, gene, core_fid))
 
                 # Draw assembly graph
-                begin_y = asm_graph.draw(0, "a. Read alignment")
-                begin_y += 200
+                try:
+                    begin_y = asm_graph.draw(0, "a. Read alignment")
+                    begin_y += 200
                 
-                # Apply De Bruijn graph
-                viterbi_calls[gene] = asm_graph.guided_DeBruijn(assembly_verbose)
+                    # Apply De Bruijn graph
+                    viterbi_calls[gene] = asm_graph.guided_DeBruijn(assembly_verbose)
 
-                # Draw assembly graph
-                begin_y = asm_graph.draw(begin_y, "b. Assembly")
-                begin_y += 200
+                    # Draw assembly graph
+                    begin_y = asm_graph.draw(begin_y, "b. Assembly")
+                    begin_y += 200
 
-                # Draw assembly graph
-                asm_graph.nodes = asm_graph.nodes2
-                asm_graph.to_node, asm_graph.from_node = {}, {}
-                begin_y = asm_graph.draw(begin_y, "c. Assembly with known alleles")
+                    # Draw assembly graph
+                    asm_graph.nodes = asm_graph.nodes2
+                    asm_graph.to_node, asm_graph.from_node = {}, {}
+                    begin_y = asm_graph.draw(begin_y, "c. Assembly with known alleles")
 
-                # End drawing assembly graph
-                asm_graph.end_draw()
+                    # End drawing assembly graph
+                    asm_graph.end_draw()
                 
+                except:
+                    print >> sys.stderr, "Error in building and calling viterbi"
+
                 # Compare two alleles
                 if simulation and len(test_Gene_names) == 2:
                     allele_name1, allele_name2 = test_Gene_names
