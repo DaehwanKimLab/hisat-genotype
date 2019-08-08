@@ -1688,3 +1688,74 @@ def identify_ambigious_diffs(ref_seq,
     
     return cmp_left, cmp_right, list(left_alt_set), list(right_alt_set)
 
+##################################################
+#   Nuance result parser
+##################################################
+
+def build_tree(vlist, tree, leaf):
+    if len(vlist) == 1:
+        tree[vlist[0]] = {'leaf' : leaf}
+        return tree
+
+    field = vlist[0]
+    if field not in tree:
+        tree[field] = build_tree(vlist[1:], {}, leaf)
+    else:
+        tree[field] = build_tree(vlist[1:], tree[field], leaf)
+
+    tree['score'] = 0
+    return tree
+
+
+def call_nuance_results(nfile):
+    datatree = { 'raw' : {} , 'tree' : {}, 'viterbi' : {} }
+
+    viterbi = False
+    with open(nfile, "r") as ifi:
+        for line in ifi:
+            line = line.strip()
+            if line.startswith("Viterbi"):
+                viterbi = True
+                continue
+
+            if 'abundance' not in line and not viterbi:
+                continue
+
+            if viterbi:
+                ix = line.find(':')
+                datatree['viterbi'][line[:ix]] = line[ix+2:]
+                continue
+
+            gene = line.split()[3].split('*')[0]
+            ix = line.find(gene)
+            line = line[ix:]
+            if gene not in datatree['raw']:
+                datatree['raw'][gene] = []
+                datatree['tree'][gene] = {'score' : 0}
+
+            datatree['raw'][gene].append(line)
+
+            replacement = ['(', ')']
+            for sym in replacement:
+                line = line.replace(sym, '')
+
+            allele, _, percent = line.split()
+
+            allele = allele.split('*')[-1].split(':')
+            datatree['tree'][gene] = build_tree(allele, datatree['tree'][gene], round(float(percent[:-1])/100,4))
+            """
+            itr, clev = 0, datatree['tree'][gene] 
+            while True:
+                field = allele[itr]
+                if field not in clev:
+                    if itr + 1 != len(allele):
+                        clev[field] = {'value' : 0}
+                    else:
+                        clev[field] = {'value' : round(float(percent[:-1])/100,4)}
+                        break
+
+                clev = clev[field]
+                itr += 1
+            """
+
+    return datatree

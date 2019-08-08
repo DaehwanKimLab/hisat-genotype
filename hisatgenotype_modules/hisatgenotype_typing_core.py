@@ -1256,7 +1256,7 @@ def typing(simulation,
                                 else:
                                     var_type, var_pos, var_data = gene_vars[var_id]
                                     right_ = var_pos - 1
-                                    
+                                
                                 for pos in range(left_, right_ + 1):
                                     if read_seq[read_pos] != ref_seq[pos]:
                                         if left_ < pos:
@@ -1284,7 +1284,7 @@ def typing(simulation,
                                     cmp_list.append(["insertion", var_pos, len(var_data), var_id])
                                     left_ = var_pos
                                     read_pos += len(var_data)
-                                    
+
                             assert len(cmp_list) > 0
                             cmp_llist.append(cmp_list)
 
@@ -1347,7 +1347,7 @@ def typing(simulation,
 
                     prev_read_id = read_id
                     prev_right_pos = right_pos
-
+ 
                 if prev_read_id != None:
                     num_pairs += 1
                     if base_fname == "codis" and gene == "D18S51":

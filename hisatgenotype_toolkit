@@ -74,7 +74,7 @@ if __name__ == '__main__':
         cmd += additional
     elif args.script_help:
         cmd += additional + ['--help']
-    else:
+    elif args.script not in ['conc-results']:
         print >> sys.stderr, "Please provide options for tool selected"
         exit(1)    
 
