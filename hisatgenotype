@@ -19,7 +19,7 @@
 #
 
 import sys, os, subprocess, re
-import traceback, functools
+import datetime
 import glob, multiprocessing, random
 import hisatgenotype_args as arguments
 import hisatgenotype_typing_common as typing_common
@@ -39,16 +39,6 @@ class Namespace:
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
-
-def traceback_unhandled_exceptions(func):
-    @functools.wraps(func)
-    def wrapped_func(*args, **kwargs):
-        try:
-            func(*args, **kwargs)
-        except:
-            print 'Exception in '+func.__name__
-            traceback.print_exc()
-    return wrapped_func
 
 def init(l):
     global lock
@@ -609,7 +599,7 @@ if __name__ == '__main__':
     random.seed(args.random_seed)
     if not fq_fname_base:
         if args.debug == '':
-            print >> sys.stderr, "No --debug or -U -1 -2 --read-dir options set"
+            print >> sys.stderr, "No --debug or -U -1 -2 --in-dir options set"
             exit(1)
 
         for base, loci in region_list.items():
@@ -646,10 +636,11 @@ if __name__ == '__main__':
                      args.out_dir,
                      debug)
     else:
-        # DB TODO: Pickling error with this step. Right now no assert error are seen without this
-        #genotyping_locus = traceback_unhandled_exceptions(genotyping_locus)
-        #pool = multiprocessing.Pool(int(args.threads), initializer=init, initargs=(l,))
+        log = {}
+        pool = multiprocessing.Pool(int(args.threads), initializer=init, initargs=(l,))
         for base, file_list in fq_fname_base.items():
+            entry = base
+
             for fname in file_list:
                 if args.already_extract:
                     fasta_fname = glob.glob("%s*" % (fname))
@@ -657,11 +648,13 @@ if __name__ == '__main__':
                     fasta_fname = glob.glob("%s/%s*" % (args.out_dir, fname))
 
                 assert len(fasta_fname) < 3, "Too many files found"
-                for fname in fasta_fname:
-                    discard_list.add(fname)
+                for fn in fasta_fname:
+                    entry = entry + ' ' + fn.split('/')[-1]
+                    discard_list.add(fn)
 
                 locus_list = region_list[base] if "ALL" not in region_list else []
-                genotyping_locus(base,
+                log[entry] = pool.apply_async(genotyping_locus,
+                                args = (base,
                                      locus_list,
                                      args.genotype_genome,
                                      only_locus_list,
@@ -690,10 +683,26 @@ if __name__ == '__main__':
                                      args.verbose_level,
                                      args.assembly_verbose,
                                      args.out_dir,
-                                     debug)
-        #pool.close()
-        #pool.join()
+                                     debug))
 
+        # Generate Log files for errors
+        pool.close()
+
+        runtime = str(date.today())
+        ofnlog = open("%s_hisat-genotype.log" % (runtime), 'w')        
+        
+        for entry, x in log.items():
+            ofnlog.write('> Base and Files:' + entry + '\n')
+            try:
+                ofnlog.write(x.get())
+            except:
+                ofnlog.write('No Assert Errors')
+                pass
+            ofnlog.write('\n\n')
+        ofnlog.close()
+        
+        pool.join()
+      
     if not args.keep_extract:
         for fname in discard_list:
             os.remove(fname)

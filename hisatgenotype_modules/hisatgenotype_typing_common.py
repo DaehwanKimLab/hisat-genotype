@@ -1693,19 +1693,17 @@ def identify_ambigious_diffs(ref_seq,
 ##################################################
 
 def build_tree(vlist, tree, leaf):
-    if len(vlist) == 1:
-        tree[vlist[0]] = {'leaf' : leaf}
-        return tree
+    if len(vlist) == 0:
+        return {'score' : leaf, 'children' : None}
 
     field = vlist[0]
-    if field not in tree:
-        tree[field] = build_tree(vlist[1:], {}, leaf)
+    if field not in tree['children']:
+        tree['children'][field] = build_tree(vlist[1:], {'score' : 0, 'children' : {}}, leaf)
     else:
-        tree[field] = build_tree(vlist[1:], tree[field], leaf)
+        tree['children'][field] = build_tree(vlist[1:], tree['children'][field], leaf)
 
-    tree['score'] = 0
+    tree['score'] += leaf
     return tree
-
 
 def call_nuance_results(nfile):
     datatree = { 'raw' : {} , 'tree' : {}, 'viterbi' : {} }
@@ -1726,12 +1724,17 @@ def call_nuance_results(nfile):
                 datatree['viterbi'][line[:ix]] = line[ix+2:]
                 continue
 
-            gene = line.split()[3].split('*')[0]
+            if '***' in line:
+                split_by = 3
+            else:
+                split_by = 2
+
+            gene = line.split()[split_by].split('*')[0]
             ix = line.find(gene)
             line = line[ix:]
             if gene not in datatree['raw']:
                 datatree['raw'][gene] = []
-                datatree['tree'][gene] = {'score' : 0}
+                datatree['tree'][gene] = {'score' : 0, 'children' : {}}
 
             datatree['raw'][gene].append(line)
 
@@ -1743,6 +1746,7 @@ def call_nuance_results(nfile):
 
             allele = allele.split('*')[-1].split(':')
             datatree['tree'][gene] = build_tree(allele, datatree['tree'][gene], round(float(percent[:-1])/100,4))
+        
             """
             itr, clev = 0, datatree['tree'][gene] 
             while True:

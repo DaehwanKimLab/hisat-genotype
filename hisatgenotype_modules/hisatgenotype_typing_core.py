@@ -2430,4 +2430,3 @@ def genotyping_locus(base_fname,
                assembly_verbose,
                out_dir,
                dbversion)
-
