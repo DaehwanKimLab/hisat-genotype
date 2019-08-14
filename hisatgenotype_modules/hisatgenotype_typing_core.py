@@ -259,6 +259,11 @@ def typing(simulation,
         core_fid = read_fname[0].split('/')[-1].split('.')[0]
         report_file = open('%s/%s-%s-%s.report' % (out_dir, output_base, base_fname, core_fid), 'w')
     
+    if verbose or assembly_verbose or simulation:
+        msg_out = [sys.stderr, report_file]
+    else:
+        msg_out = [report_file]
+
     # Add version and command info to all report files
     version_file = '/'.join(os.path.dirname(__file__).split('/')[:-1]) + '/VERSION'
     version_info = open(version_file, 'r').read()
@@ -273,7 +278,7 @@ def typing(simulation,
 
     # Begin Alignment for typing
     for aligner, index_type in aligners:
-        for f_ in [sys.stderr, report_file]:
+        for f_ in msg_out:
             if index_type == "graph":
                 print >> f_, "\n\t\t%s %s" % (aligner, index_type)
             else:
@@ -1375,7 +1380,7 @@ def typing(simulation,
                 if num_reads <= 0:
                     continue
 
-                for f_ in [sys.stderr, report_file]:
+                for f_ in msg_out:
                     print >> f_, "\t\t\t%d reads and %d pairs are aligned" % (num_reads, num_pairs)
                 
             else:
@@ -1444,18 +1449,18 @@ def typing(simulation,
                     found = False
                     for test_Gene_name in test_Gene_names:
                         if count[0] == test_Gene_name:
-                            for f_ in [sys.stderr, report_file]:
+                            for f_ in msg_out:
                                 print >> f_, "\t\t\t*** %d ranked %s (count: %d)" % (count_i + 1, test_Gene_name, count[1])
                             found = True
                     if count_i < 5 and not found:
-                        for f_ in [sys.stderr, report_file]:
+                        for f_ in msg_out:
                             print >> f_, "\t\t\t\t%d %s (count: %d)" % (count_i + 1, count[0], count[1])
                 else:
-                    for f_ in [sys.stderr, report_file]:
+                    for f_ in msg_out:
                         print >> f_, "\t\t\t\t%d %s (count: %d)" % (count_i + 1, count[0], count[1])
                     if count_i >= 9:
                         break
-            for f_ in [sys.stderr, report_file]:
+            for f_ in msg_out:
                 print >> f_
 
             # Calculate the abundance of representative alleles on exonic sequences
@@ -1594,7 +1599,8 @@ def typing(simulation,
                     asm_graph.end_draw()
                 
                 except:
-                    print >> sys.stderr, "Error in building and calling viterbi"
+                    for f_ in msg_out:
+                        print >> f_, "Error in building and calling viterbi"
 
                 # Compare two alleles
                 if simulation and len(test_Gene_names) == 2:
@@ -1648,18 +1654,18 @@ def typing(simulation,
                                 if (var_i > 0 and var_i + 1 < len(vars1)) or cmp_var[0] != "deletion":
                                     if print_output:
                                         if cmp_var_in_exon:
-                                            for f_ in [sys.stderr, report_file]:
+                                            for f_ in msg_out:
                                                 print >> f_, "\033[94mexon%d\033[00m" % (exon_i + 1),
-                                        for f_ in [sys.stderr, report_file]:
+                                        for f_ in msg_out:
                                             print >> f_, "***", cmp_var_id, cmp_var, "==", "\t\t\t", mpileup[cmp_var[1]]
                                     mismatches += 1
                             var_i += 1
                         else:
                             if print_output:
                                 if node_var_in_exon:
-                                    for f_ in [sys.stderr, report_file]:
+                                    for f_ in msg_out:
                                         print >> f_, "\033[94mexon%d\033[00m" % (exon_i + 1),
-                                for f_ in [sys.stderr, report_file]:
+                                for f_ in msg_out:
                                     print >> f_, "*** ==", node_var_id, node_var, "\t\t\t", mpileup[node_var[1]]
                             mismatches += 1
                             var_j += 1
@@ -1711,7 +1717,7 @@ def typing(simulation,
                             alleles.append([cmp_Gene_name, tmp_vars])
 
                     for allele_name, cmp_vars in alleles:
-                        for f_ in [sys.stderr, report_file]:
+                        for f_ in msg_out:
                             print >> f_, "vs.", allele_name
                             allele_seq, allele_exons, allele_mm = compare_alleles(cmp_vars, node_vars)
                             print >> f_, "\t\tallele sequence (%d bps):" % len(allele_seq), allele_seq
@@ -1735,7 +1741,7 @@ def typing(simulation,
                     elif tmp_common == max_common:
                         max_allele_names.append(allele_name)
 
-                for f_ in [sys.stderr, report_file]:
+                for f_ in msg_out:
                     print >> f_, "Genomic:", node_name
                     node_vars = node.get_var_ids()
                     min_mismatches = sys.maxint
@@ -1772,7 +1778,7 @@ def typing(simulation,
                     elif tmp_common == max_common:
                         max_allele_names.append(allele_name)
 
-                for f_ in [sys.stderr, report_file]:
+                for f_ in msg_out:
                     print >> f_, "Exonic:", node_name
                     for max_allele_name in max_allele_names:
                         print >> f_, "\t\t%s:" % max_allele_name, max_common
@@ -1803,7 +1809,7 @@ def typing(simulation,
                                     rank_i -= 1
                                 else:
                                     break
-                            for f_ in [sys.stderr, report_file]:
+                            for f_ in msg_out:
                                 print >> f_, "\t\t\t*** %d ranked %s (abundance: %.2f%%)" % (rank_i + 1, test_Gene_name, prob[1] * 100.0)
                             if rank_i < len(success):
                                 success[rank_i] = True
@@ -1813,11 +1819,11 @@ def typing(simulation,
                     if not False in found_list and prob_i >= 10:
                         break
                 if not found:
-                    for f_ in [sys.stderr, report_file]:
+                    for f_ in msg_out:
                         print >> f_, "\t\t\t\t%d ranked %s (abundance: %.2f%%)" % (prob_i + 1, _allele_rep, prob[1] * 100.0)
 
                     if best_alleles and prob_i < 2:
-                        for f_ in [sys.stderr, report_file]:
+                        for f_ in msg_out:
                             print >> f_, "SingleModel %s (abundance: %.2f%%)" % (_allele_rep, prob[1] * 100.0)
 
                 # DK - debugging purposes
@@ -1851,7 +1857,7 @@ def typing(simulation,
             os.system("rm %s*" % (alignment_fname))
 
     if assembly:
-        for f_ in [sys.stderr, report_file]:
+        for f_ in msg_out:
             print >> f_, "\t\tViterbi Coloring Allele Collapse:"
             for genename, calls in viterbi_calls.items():
                 if calls:
@@ -2058,7 +2064,7 @@ def genotyping_locus(base_fname,
     if ',' in base_fname:
         print >> sys.stderr, "Don't use list in hisatgenotype_locus"
         exit(1)
-    
+
     simulation = (read_fname == [] and alignment_fname == "")
     if genotype_genome == "":
         if not os.path.exists("hisatgenotype_db"):

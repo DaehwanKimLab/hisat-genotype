@@ -1706,7 +1706,7 @@ def build_tree(vlist, tree, leaf):
     return tree
 
 def call_nuance_results(nfile):
-    datatree = { 'raw' : {} , 'tree' : {}, 'viterbi' : {} }
+    datatree = { 'EM' : {} , 'Allele splitting' : {}, 'Viterbi' : {} }
 
     viterbi = False
     with open(nfile, "r") as ifi:
@@ -1721,7 +1721,7 @@ def call_nuance_results(nfile):
 
             if viterbi:
                 ix = line.find(':')
-                datatree['viterbi'][line[:ix]] = line[ix+2:]
+                datatree['Viterbi'][line[:ix]] = line[ix+2:]
                 continue
 
             if '***' in line:
@@ -1732,11 +1732,11 @@ def call_nuance_results(nfile):
             gene = line.split()[split_by].split('*')[0]
             ix = line.find(gene)
             line = line[ix:]
-            if gene not in datatree['raw']:
-                datatree['raw'][gene] = []
-                datatree['tree'][gene] = {'score' : 0, 'children' : {}}
+            if gene not in datatree['EM']:
+                datatree['EM'][gene] = []
+                datatree['Allele splitting'][gene] = {'score' : 0, 'children' : {}}
 
-            datatree['raw'][gene].append(line)
+            datatree['EM'][gene].append(line)
 
             replacement = ['(', ')']
             for sym in replacement:
@@ -1745,21 +1745,6 @@ def call_nuance_results(nfile):
             allele, _, percent = line.split()
 
             allele = allele.split('*')[-1].split(':')
-            datatree['tree'][gene] = build_tree(allele, datatree['tree'][gene], round(float(percent[:-1])/100,4))
-        
-            """
-            itr, clev = 0, datatree['tree'][gene] 
-            while True:
-                field = allele[itr]
-                if field not in clev:
-                    if itr + 1 != len(allele):
-                        clev[field] = {'value' : 0}
-                    else:
-                        clev[field] = {'value' : round(float(percent[:-1])/100,4)}
-                        break
-
-                clev = clev[field]
-                itr += 1
-            """
+            datatree['Allele splitting'][gene] = build_tree(allele, datatree['Allele splitting'][gene], round(float(percent[:-1])/100,4))
 
     return datatree

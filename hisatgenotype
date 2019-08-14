@@ -19,7 +19,7 @@
 #
 
 import sys, os, subprocess, re
-import datetime
+import datetime, traceback
 import glob, multiprocessing, random
 import hisatgenotype_args as arguments
 import hisatgenotype_typing_common as typing_common
@@ -329,8 +329,8 @@ if __name__ == '__main__':
     try:
         with open(version_file, 'r') as vfi:
             for line in vfi:
-                line = line.strip().split()
-                version_info.append(line[1])
+                line = line.strip()
+                version_info.append(line)
     except:
         version_info = ['', '']
 
@@ -636,12 +636,12 @@ if __name__ == '__main__':
                      args.out_dir,
                      debug)
     else:
-        log = {}
+        log = {} # build log to capture errors
         pool = multiprocessing.Pool(int(args.threads), initializer=init, initargs=(l,))
         for base, file_list in fq_fname_base.items():
-            entry = base
-
             for fname in file_list:
+                entry = base # naming for log
+
                 if args.already_extract:
                     fasta_fname = glob.glob("%s*" % (fname))
                 else:
@@ -694,11 +694,11 @@ if __name__ == '__main__':
         for entry, x in log.items():
             ofnlog.write('> Base and Files:' + entry + '\n')
             try:
-                ofnlog.write(x.get())
-            except:
-                ofnlog.write('No Assert Errors')
-                pass
-            ofnlog.write('\n\n')
+                ofnlog.write(str(x.get()))
+            except Exception:
+                err_msg = traceback.format_exc()
+                ofnlog.write(err_msg)
+            ofnlog.write('\n')
         ofnlog.close()
         
         pool.join()

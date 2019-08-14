@@ -23,6 +23,21 @@ from argparse import ArgumentParser
 import hisatgenotype_typing_common as typing_common
 import hisatgenotype_args as hg_args
 
+def flatten(tree, prev_key = '', sep = '*'):
+    items = []
+    for key, value in tree.items():
+        new_key = prev_key + sep + key if prev_key else key
+        try:
+            items.extend(flatten(value['children'], new_key, ':').items())
+            items.append((new_key + ' - Frag', value['score']))
+        except:
+            items.append((new_key, value['score']))
+
+    if sep == ":":
+        return dict(items)
+    else:
+        return sorted(items, key=lambda tup : (tup[1], len(tup[0].split()[0])), reverse = True)
+
 if __name__ == '__main__':
     parser = ArgumentParser(
         description='Script for simplifying HISAT-genotype results')
@@ -41,5 +56,32 @@ if __name__ == '__main__':
     for report in reports:
         report_results[report] = typing_common.call_nuance_results(report)
 
+    scores = []
     for file_ in report_results:
-        print report_results[file_]['tree']
+        print('File: %s' % file_)
+
+        for type_ in report_results[file_]:
+            print("\tAnalysis - %s" % type_)
+            if type_ == 'Allele splitting':
+                tree = report_results[file_]['Allele splitting']
+                for gene in tree:
+                    print('\t\tGene: %s (score: %.2f)' % (gene, tree[gene]['score']))
+                    
+                    flattened_tree = flatten(tree[gene]['children'], gene)
+                    pastv, pastn = 0, ''
+                    for tup in flattened_tree:
+                        if tup[1] < 0.2 or (pastv == tup[1] and "Frag" in tup[0]):
+                            continue
+                        print('\t\t\t%s (score: %.4f)' % (tup[0], tup[1]))
+                        pastn, pastv = tup
+
+            else:
+                for gene, data in report_results[file_][type_].items():
+                    print('\t\tGene: %s' % gene)
+                    if isinstance(data, list):
+                        for line in data:
+                            print('\t\t\t%s' % line)
+                    else:
+                        print('\t\t\t%s' % data)
+
+                
