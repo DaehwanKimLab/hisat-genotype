@@ -84,6 +84,11 @@ $ export PYTHONPATH=~/hisat-genotype/hisatgenotype_modules:$PYTHONPATH
 ## hisatgenotype - Analysis of a whole human genome
 The hisatgenotype.py python script will analyze a whole human genome using whole genome sequencing reads. It will align reads to genotype genome, extract reads belonging to each locus of interest, and perform typing and assembly. 
 
+Usage:
+```bash
+$ hisatgenotype -x [GENOME] [OPTIONS] -1 [FASTQ_PAIR1] -2 [FASTQ_PAIR2]
+```
+
 ### Standard Options
 
 * **-x / \--ref-genome** | *Default* : *None* 
@@ -276,6 +281,44 @@ The hisatgenotype.py python script will analyze a whole human genome using whole
 ## hisatgenotype_toolkit - Individual Scripts and Tools for Custom Pipelines
 
 *Work In Progress to document*
+
+Usage:
+```bash
+$ hisatgenotype_toolkit <BASE_TOOL> [TOOL_OPTIONS]
+```
+
+### build-genome        
+*(hisatgenotype_build_genome.py)*
+
+### call-variants       
+*(hisatgenotype_call_variants.py)*
+
+### convert-codis       
+*(hisatgenotype_convert_codis.py)*
+
+### extract-RBG         
+*(hisatgenotype_extract_RBG.py)*
+
+### extract-codis-data  
+*(hisatgenotype_extract_codis_data.py)*
+
+### extract-cyp-data    
+*(hisatgenotype_extract_cyp_data.py)*
+
+### extract-reads       
+*(hisatgenotype_extract_reads.py)*
+
+### extract-vars        
+*(hisatgenotype_extract_vars.py)*
+
+### legacy              
+*(hisatgenotype_legacy.py)*
+
+### locus               
+*(hisatgenotype_locus.py)*
+
+### locus-samples       
+*(hisatgenotype_locus_samples.py)*
 
 
 

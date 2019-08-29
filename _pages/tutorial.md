@@ -31,7 +31,7 @@ In order to install HISAT2, please run the following commands.
 ```bash
  $ git clone https://github.com/DaehwanKimLab/hisat-genotype hisat-genotype
  $ cd hisat-genotype
- hisat-genotype-top$ git checkout hisatgenotype_v1.1.2_beta
+ hisat-genotype-top$ git checkout hisatgenotype_v1.1.2_beta-devel
  $ make hisat2-align-s hisat2-build-s hisat2-inspect-s
 ```
 
