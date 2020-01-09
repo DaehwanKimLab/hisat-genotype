@@ -46,7 +46,7 @@ fi
 ###### Test environment
 echo >&1 $(system_info)
 
-samtools --version >$1
+samtools --version >&1
 
 echo >&1 "Testing builds"
 if type hisat2 > /dev/null 2>&1; then
