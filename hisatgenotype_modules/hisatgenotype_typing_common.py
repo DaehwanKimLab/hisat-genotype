@@ -768,7 +768,7 @@ def align_reads(aligner,
     align_proc = subprocess.Popen(aligner_cmd,
                                   stdout=subprocess.PIPE,
                                   stderr=open("/dev/null", 'w'))
-
+   
     sambam_cmd = ["samtools",
                   "view",
                   "-bS",

@@ -8,7 +8,7 @@
             "name": "Python: HISAT genotype",
             "type": "python",
             "request": "launch",
-            "cwd" : "/home/christopher/Documents/hisatgenotype-working/hg_v1.2_testing",
+            "cwd" : "/home/christopher/Documents/hisatgenotype-working/testbed/cleanrun",
             //"cwd": "/home/christopher/Documents/hisatgenotype-working", //tmp-RBG",
             "program": "${file}",
             "args": [
@@ -16,13 +16,10 @@
                 //"--read-dir", "fastq_files", "--out-dir", "extracted_fastq"
                 //"--assembly", "-f",
                 "--base", "hla",
-                "--locus-list", "DRB1",
-                "--pass-extract",
-                "--fasta",
-                "--assembly",
+                "--locus-list", "A,B,C,DRB1",
+                "--keep-extract",
                 //"--debug", "pair"
-                "-1", "namecorr_hla_input_1.fa",
-                "-2", "namecorr_hla_input_2.fa"
+                "-U", "TS313.fastq.gz"
             ],
             "env" : {
                 "PYTHONPATH": "~/Documents/hisatgenotype-working/hisat2-devel/hisatgenotype_modules:$PYTHONPATH"

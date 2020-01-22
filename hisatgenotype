@@ -518,6 +518,7 @@ if __name__ == '__main__':
 
         if args.read_fname_U != "":
             paired = False
+            args.discordant = True
         else:
             paired = args.paired
             if (args.read_fname_1 != "" and args.read_fname_2 != "") and not paired:
@@ -637,7 +638,7 @@ if __name__ == '__main__':
                      debug)
     else:
         log = {} # build log to capture errors
-        pool = multiprocessing.Pool(int(args.threads), initializer=init, initargs=(l,))
+        # pool = multiprocessing.Pool(int(args.threads), initializer=init, initargs=(l,))
         for base, file_list in fq_fname_base.items():
             for fname in file_list:
                 entry = base # naming for log
@@ -653,40 +654,72 @@ if __name__ == '__main__':
                     discard_list.add(fn)
 
                 locus_list = region_list[base] if "ALL" not in region_list else []
-                log[entry] = pool.apply_async(genotyping_locus,
-                                args = (base,
-                                     locus_list,
-                                     args.genotype_genome,
-                                     only_locus_list,
-                                     args.partial,
-                                     args.aligner,
-                                     fasta_fname,
-                                     args.fastq,
-                                     args.alignment_fname,
-                                     args.threads_aprocess,
-                                     args.simulate_interval,
-                                     args.read_len,
-                                     args.fragment_len,
-                                     args.best_alleles,
-                                     args.num_editdist,
-                                     args.perbase_errorrate,
-                                     args.perbase_snprate,
-                                     skip_fragment_regions,
-                                     args.assembly,
-                                     args.output_base,
-                                     args.error_correction,
-                                     args.keep_alignment,
-                                     args.discordant,
-                                     args.type_primary_exons,
-                                     args.remove_low_abundance_alleles,
-                                     display_alleles,
-                                     args.verbose_level,
-                                     args.assembly_verbose,
-                                     args.out_dir,
-                                     debug))
+                # log[entry] = pool.apply_async(genotyping_locus,
+                #                 args = (base,
+                #                      locus_list,
+                #                      args.genotype_genome,
+                #                      only_locus_list,
+                #                      args.partial,
+                #                      args.aligner,
+                #                      fasta_fname,
+                #                      args.fastq,
+                #                      args.alignment_fname,
+                #                      args.threads_aprocess,
+                #                      args.simulate_interval,
+                #                      args.read_len,
+                #                      args.fragment_len,
+                #                      args.best_alleles,
+                #                      args.num_editdist,
+                #                      args.perbase_errorrate,
+                #                      args.perbase_snprate,
+                #                      skip_fragment_regions,
+                #                      args.assembly,
+                #                      args.output_base,
+                #                      args.error_correction,
+                #                      args.keep_alignment,
+                #                      args.discordant,
+                #                      args.type_primary_exons,
+                #                      args.remove_low_abundance_alleles,
+                #                      display_alleles,
+                #                      args.verbose_level,
+                #                      args.assembly_verbose,
+                #                      args.out_dir,
+                #                      debug))
+
+                genotyping_locus(base,
+                                locus_list,
+                                args.genotype_genome,
+                                only_locus_list,
+                                args.partial,
+                                args.aligner,
+                                fasta_fname,
+                                args.fastq,
+                                args.alignment_fname,
+                                args.threads_aprocess,
+                                args.simulate_interval,
+                                args.read_len,
+                                args.fragment_len,
+                                args.best_alleles,
+                                args.num_editdist,
+                                args.perbase_errorrate,
+                                args.perbase_snprate,
+                                skip_fragment_regions,
+                                args.assembly,
+                                args.output_base,
+                                args.error_correction,
+                                args.keep_alignment,
+                                args.discordant,
+                                args.type_primary_exons,
+                                args.remove_low_abundance_alleles,
+                                display_alleles,
+                                args.verbose_level,
+                                args.assembly_verbose,
+                                args.out_dir,
+                                debug)
+
 
         # Generate Log files for errors
-        pool.close()
+        # pool.close()
 
         runtime = str(date.today())
         ofnlog = open("%s_hisat-genotype.log" % (runtime), 'w')        
@@ -701,7 +734,7 @@ if __name__ == '__main__':
             ofnlog.write('\n')
         ofnlog.close()
         
-        pool.join()
+        # pool.join()
       
     if not args.keep_extract:
         for fname in discard_list:

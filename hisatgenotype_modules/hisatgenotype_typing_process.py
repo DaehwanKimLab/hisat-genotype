@@ -1409,8 +1409,12 @@ def extract_reads(base_fname,
         if family.lower() not in database_list:
             database_list.append(family.lower())
 
-    if out_dir != "" and not os.path.exists(out_dir):
-        os.mkdir(out_dir)
+    if out_dir != "":
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
+        out_dir = out_dir if out_dir.endswith("/") else out_dir + "/"    
+    elif out_dir == "":
+        out_dir = "./"
 
     # Extract reads
     if len(read_fname) > 0:
@@ -1455,21 +1459,25 @@ def extract_reads(base_fname,
         else:
             fq_fname2 = ""
 
-        if paired:
-            if out_dir != "":
-                if os.path.exists("%s/%s.extracted.1.fq.gz" % (out_dir, fq_fname_base)):
-                    continue
-        else:
-            if out_dir != "":
-                if os.path.exists("%s/%s.extracted.fq.gz" % (out_dir, fq_fname_base)):
-                    continue
-        count += 1
-
+        # Process database and if files exsist do not reextract
+        omit_extract = True
         for database in database_list:
             if database not in fname_list:
                 fname_list.update({ database : [] })
             fname_list[database].append('%s-%s' % (fq_fname_base, database))
 
+            if paired and os.path.exists("%s%s-%s-extracted-1.fq.gz" % (out_dir, fq_fname_base, database)):
+                continue
+            elif os.path.exists("%s%s-%s-extracted.fq.gz" % (out_dir, fq_fname_base, database)):
+                continue
+
+            omit_extract = False
+
+        if omit_extract:
+            print >> sys.stderr, "\tFiles found: Omitted extracting reads from %s" % (fq_fname_base)
+            continue
+
+        count += 1        
         print >> sys.stderr, "\t%d: Extracting reads from %s" % (count, fq_fname_base)
         def work(fq_fname_base,
                  fq_fname, 
@@ -1501,28 +1509,25 @@ def extract_reads(base_fname,
                                           stderr=open("/dev/null", 'w'))
 
             gzip_dic = {}
-            out_dir_slash = out_dir
-            if out_dir != "":
-                out_dir_slash += "/"
             for database in database_list:
                 if paired:
                     # LP6005041-DNA_A01-extracted-1.fq.gz
                     gzip1_proc = subprocess.Popen(["gzip"],
                                                   stdin=subprocess.PIPE,
-                                                  stdout=open("%s%s-%s-extracted-1.fq.gz" % (out_dir_slash, fq_fname_base, database), 'w'),
+                                                  stdout=open("%s%s-%s-extracted-1.fq.gz" % (out_dir, fq_fname_base, database), 'w'),
                                                   stderr=open("/dev/null", 'w'))
 
                     # LP6005041-DNA_A01-extracted-2.fq.gz
                     gzip2_proc = subprocess.Popen(["gzip"],
                                                   stdin=subprocess.PIPE,
-                                                  stdout=open("%s%s-%s-extracted-2.fq.gz" % (out_dir_slash, fq_fname_base, database), 'w'),
+                                                  stdout=open("%s%s-%s-extracted-2.fq.gz" % (out_dir, fq_fname_base, database), 'w'),
                                                   stderr=open("/dev/null", 'w'))
 
                 else:
                     # LP6005041-DNA_A01-extracted-fq.gz
                     gzip1_proc = subprocess.Popen(["gzip"],
                                                   stdin=subprocess.PIPE,
-                                                  stdout=open("%s%s-%s-extracted.fq.gz" % (out_dir_slash, fq_fname_base, database), 'w'),
+                                                  stdout=open("%s%s-%s-extracted.fq.gz" % (out_dir, fq_fname_base, database), 'w'),
                                                   stderr=open("/dev/null", 'w'))
                 gzip_dic[database] = [gzip1_proc, gzip2_proc if paired else None]
 
@@ -1542,19 +1547,19 @@ def extract_reads(base_fname,
                             # LP6005041-DNA_A01.extracted.1.fq.gz
                             gzip1_proc = subprocess.Popen(["gzip"],
                                                           stdin=subprocess.PIPE,
-                                                          stdout=open("%s%s-%s-%d_%dM-extracted-1.fq.gz" % (out_dir_slash, fq_fname_base, chr, region_i * mult, (region_i + 1) * mult), 'w'),
+                                                          stdout=open("%s%s-%s-%d_%dM-extracted-1.fq.gz" % (out_dir, fq_fname_base, chr, region_i * mult, (region_i + 1) * mult), 'w'),
                                                           stderr=open("/dev/null", 'w'))
 
                             # LP6005041-DNA_A01.extracted.2.fq.gz
                             gzip2_proc = subprocess.Popen(["gzip"],
                                                           stdin=subprocess.PIPE,
-                                                          stdout=open("%s%s-%s-%d_%dM-extracted-2.fq.gz" % (out_dir_slash, fq_fname_base, chr, region_i * mult, (region_i + 1) * mult), 'w'),
+                                                          stdout=open("%s%s-%s-%d_%dM-extracted-2.fq.gz" % (out_dir, fq_fname_base, chr, region_i * mult, (region_i + 1) * mult), 'w'),
                                                           stderr=open("/dev/null", 'w'))
                         else:
                             # LP6005041-DNA_A01.extracted.fq.gz
                             gzip1_proc = subprocess.Popen(["gzip"],
                                                           stdin=subprocess.PIPE,
-                                                          stdout=open("%s%s-%s-%d_%dM-extracted.fq.gz" % (out_dir_slash, fq_fname_base, chr, region_i * mult, (region_i + 1) * mult), 'w'),
+                                                          stdout=open("%s%s-%s-%d_%dM-extracted.fq.gz" % (out_dir, fq_fname_base, chr, region_i * mult, (region_i + 1) * mult), 'w'),
                                                           stderr=open("/dev/null", 'w'))
                         whole_gzip_dic[chr].append([gzip1_proc, gzip2_proc if paired else None])
 

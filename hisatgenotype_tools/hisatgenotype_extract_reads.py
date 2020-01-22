@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     if args.locus_list:
         print "--locus-list option not implemented in this script yet, skipping"
-    if not args.graph_genome:
+    if not args.graph_index:
         print "--linear-index not implemented yet, skipping"
 
     if not args.genotype_genome:

@@ -270,11 +270,12 @@ def typing(simulation,
     version_info = version_info.split('\n')
     cmd_call = ' '.join(sys.argv)
 
-    print >> report_file, "# VERSIONS:\n"
-    print >> report_file, "# HISAT2 - %s\n" % version_info[0]
-    print >> report_file, "# HISAT-genotype - %s\n" % version_info[1]
-    print >> report_file, "# Database - %s\n" % dbversion
-    print >> report_file, "# COMMAND:\n%s" % cmd_call
+    for f_ in msg_out:
+        print >> f_, "# VERSIONS:\n"
+        print >> f_, "# HISAT2 - %s\n" % version_info[0]
+        print >> f_, "# HISAT-genotype - %s\n" % version_info[1]
+        print >> f_, "# Database - %s\n" % dbversion
+        print >> f_, "# COMMAND:\n%s" % cmd_call
 
     # Begin Alignment for typing
     for aligner, index_type in aligners:
@@ -532,7 +533,7 @@ def typing(simulation,
             prev_read_id = None
             prev_right_pos = 0
             prev_lines = []
-            left_read_ids, right_read_ids = set(), set()
+            left_read_ids, right_read_ids, single_read_ids = set(), set(), set() # TODO Don't know what these are used for
             if index_type == "graph":
                 # nodes for reads
                 read_nodes = []
@@ -720,7 +721,7 @@ def typing(simulation,
                     if pos < 0:
                         continue
 
-                    # Unalined?
+                    # Unalined? Insurance that nonmaped reads will not be processed
                     if flag & 0x4 != 0:
                         if simulation and verbose >= 2:
                             print "Unaligned"
@@ -756,21 +757,27 @@ def typing(simulation,
                     if not allow_discordant and not concordant:
                         continue
 
-                    # Left read?
+                    # Add reads to nodes and assign left, right, or discordant
                     is_left_read = flag & 0x40 != 0
-                    if is_left_read:
+                    if is_left_read:            # Left read?
                         if read_id in left_read_ids:
                             continue
                         left_read_ids.add(read_id)
                         if not simulation:
                             node_read_id += '|L'
-                    else: # Right read?
-                        assert flag & 0x80 != 0
+                    elif flag & 0x80 != 0:      # Right read?
                         if read_id in right_read_ids:
                             continue
                         right_read_ids.add(read_id)
                         if not simulation:
                             node_read_id += '|R'
+                    else:
+                        assert allow_discordant
+                        if read_id in single_read_ids:
+                            continue
+                        single_read_ids.add(read_id)
+                        if not simulation:
+                            node_read_id += '|U'
 
                     if Zs:
                         Zs_str = Zs
@@ -978,8 +985,8 @@ def typing(simulation,
                             cigar_str += str(length)
                             cigar_str += type
 
-                    if sum(softclip) > 0:
-                        continue
+                    # if sum(softclip) > 0: #TODO Examine the purpose of this skip
+                    #     continue
 
                     if right_pos > len(ref_seq):
                         continue
