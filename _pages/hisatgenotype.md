@@ -10,6 +10,9 @@ share: false
 [__Get HISAT-genotype__](https://github.com/DaehwanKimLab/hisat-genotype)
 
 ### News and Releases:
++ __*01/23/2020*: HISAT-genotype 1.1.3 release__
+    - Incremental change to address bugs with using -U option
+<br>
 
 + __*7/11/2019*: HISAT-genotype 1.1.2-beta release__
     - Wrapper has been added to HISAT-genotype. `hisatgenotype` and `hisatgenotype_toolkit` runs the entirety of HISAT-genotype

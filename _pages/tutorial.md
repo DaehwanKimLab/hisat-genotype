@@ -31,7 +31,7 @@ In order to install HISAT2, please run the following commands.
 ```bash
  $ git clone https://github.com/DaehwanKimLab/hisat-genotype hisat-genotype
  $ cd hisat-genotype
- hisat-genotype-top$ git checkout hisatgenotype_v1.1.2_beta-devel
+ hisat-genotype-top$ git checkout hisatgenotype_v1.1.3
  $ make hisat2-align-s hisat2-build-s hisat2-inspect-s
 ```
 
@@ -123,7 +123,7 @@ Abundance of alleles
   1 ranked A*02:01:01:01 (abundance: 54.32%)
   2 ranked A*11:01:01:01 (abundance: 45.20%)
   3 ranked A*24:33 (abundance: 0.48%)
-``` 
+```
 
 The above rankings show the top three alleles that are most abundant in the sample. Normally, the top two alleles in this estimate (e.g. A*02:01:01:01 and A*11:01:01:01) are considered as the two alleles that best match a given sequencing data.
 
@@ -137,6 +137,3 @@ The first two bands are two alleles predicted by HISAT-genotype, in this case A*
 HLA Assembly NA12892 2.png
 
 As above, the first two bands are two alleles predicted by HISAT-genotype, and the next two bands are two alleles assembled by HISAT-genotype. In most of the cases, the predicted alleles are the same as the assembled alleles.
-
-
-
