@@ -1865,7 +1865,7 @@ def typing(simulation,
 
     if assembly:
         for f_ in msg_out:
-            print >> f_, "\t\tViterbi Coloring Allele Collapse:"
+            print >> f_, "\t\tAssembly Coloring Allele Collapse:"
             for genename, calls in viterbi_calls.items():
                 if calls:
                     print >> f_, "\t\t\t%s: %s (Group score: %.5f)" % (genename, ' : '.join(calls[0]), 10**calls[1])

@@ -126,13 +126,13 @@ def args_input_output(parser, indir = True, outdir = True):
         parser.add_argument('--in-dir',
                             dest="read_dir",
                             type=str,
-                            default="",
+                            default=".",
                             help='Input directory (e.g. read_input) (default: (empty))')
     if outdir:
         parser.add_argument("--out-dir",
                             dest="out_dir",
                             type=str,
-                            default="",
+                            default=".",
                             help='Output directory (default: (empty))')
 
 def args_bamfile(parser):

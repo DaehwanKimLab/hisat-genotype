@@ -29,7 +29,7 @@ def flatten(tree, prev_key = '', sep = '*'):
         new_key = prev_key + sep + key if prev_key else key
         try:
             items.extend(flatten(value['children'], new_key, ':').items())
-            items.append((new_key + ' - Frag', value['score']))
+            items.append((new_key + ' - Partial', value['score']))
         except:
             items.append((new_key, value['score']))
 
@@ -42,7 +42,12 @@ if __name__ == '__main__':
     parser = ArgumentParser(
         description='Script for simplifying HISAT-genotype results')
 
-    hg_args.args_input_output(parser)
+    hg_args.args_input_output(parser, outdir=False)
+    parser.add_argument("--csv",
+                        dest="csv",
+                        action = "store_true",
+                        help='Save Results as CSV dataframe')
+
     args = parser.parse_args()
 
     if args.read_dir:
@@ -57,31 +62,57 @@ if __name__ == '__main__':
         report_results[report] = typing_common.call_nuance_results(report)
 
     scores = []
+    genecol = ["File"]
     for file_ in report_results:
         print('File: %s' % file_)
+        scores.append([file_])
 
         for type_ in report_results[file_]:
             print("\tAnalysis - %s" % type_)
             if type_ == 'Allele splitting':
                 tree = report_results[file_]['Allele splitting']
                 for gene in tree:
-                    print('\t\tGene: %s (score: %.2f)' % (gene, tree[gene]['score']))
-                    
-                    flattened_tree = flatten(tree[gene]['children'], gene)
-                    pastv, pastn = 0, ''
-                    for tup in flattened_tree:
-                        if tup[1] < 0.2 or (pastv == tup[1] and "Frag" in tup[0]):
-                            continue
-                        print('\t\t\t%s (score: %.4f)' % (tup[0], tup[1]))
-                        pastn, pastv = tup
+                    collab = "%s: %s" % (type_, gene)
+                    if collab not in genecol:
+                        genecol.append(collab)                    
 
+                    print('\t\tGene: %s (score: %.2f)' % (gene, tree[gene]['score']))
+                    flattened_tree = flatten(tree[gene]['children'], gene)
+
+                    pastv, pastn = 0, ''
+                    report_line = ''
+                    for tup in flattened_tree:
+                        # This is to filter out any missilaneous partial alleles with similar score to parent (ex remove A*01 - Partial 50% if A*01:01:01:01 50%)
+                        if tup[1] < 0.2 or (pastv == tup[1] and "Partial" in tup[0]): 
+                            continue
+
+                        result_str = '%s (score: %.4f)' % (tup[0], tup[1])
+                        report_line += result_str + ","
+
+                        print("\t\t\t" + result_str)
+                        pastn, pastv = tup
+                    
+                    scores[-1].append(report_line[:-1])
+            
             else:
                 for gene, data in report_results[file_][type_].items():
+                    collab = "%s: %s" % (type_, gene)
+                    if collab not in genecol:
+                        genecol.append(collab)
+
                     print('\t\tGene: %s' % gene)
+
                     if isinstance(data, list):
+                        scores[-1].append(",".join(data))
                         for line in data:
                             print('\t\t\t%s' % line)
                     else:
+                        scores[-1].append(data)
                         print('\t\t\t%s' % data)
 
-                
+    if args.csv:
+        scores.insert(0, genecol)
+        with open("HG_report_results.csv", "w") as ofo:
+            for line in scores:
+                line = "\t".join(line)
+                ofo.write(line + "\n")

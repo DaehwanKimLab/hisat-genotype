@@ -1706,13 +1706,13 @@ def build_tree(vlist, tree, leaf):
     return tree
 
 def call_nuance_results(nfile):
-    datatree = { 'EM' : {} , 'Allele splitting' : {}, 'Viterbi' : {} }
+    datatree = { 'EM' : {} , 'Allele splitting' : {}, 'Assembly' : {} }
 
     viterbi = False
     with open(nfile, "r") as ifi:
         for line in ifi:
             line = line.strip()
-            if line.startswith("Viterbi"):
+            if line.startswith("Assembly"):
                 viterbi = True
                 continue
 
@@ -1721,7 +1721,7 @@ def call_nuance_results(nfile):
 
             if viterbi:
                 ix = line.find(':')
-                datatree['Viterbi'][line[:ix]] = line[ix+2:]
+                datatree['Assembly'][line[:ix]] = line[ix+2:]
                 continue
 
             if '***' in line:
