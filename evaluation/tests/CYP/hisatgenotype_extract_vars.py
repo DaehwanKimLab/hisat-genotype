@@ -1,1 +1,0 @@
-../../../hisatgenotype_extract_vars.py
