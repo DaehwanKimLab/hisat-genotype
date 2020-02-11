@@ -1,26 +1,15 @@
-# hisat2
-HISAT2 is a fast and sensitive alignment program for mapping next-generation sequencing reads (whole-genome, transcriptome, and exome sequencing data) to a population of human genomes (as well as to a single reference genome). Based on an extension of BWT for a graph [1], we designed and implemented a graph FM index (GFM), an original approach and its first implementation to the best of our knowledge. In addition to using one global GFM index that represents general population, HISAT2 uses a large set of small GFM indexes that collectively cover the whole genome (each index representing a genomic region of 56 Kbp, with 55,000 indexes needed to cover human population). These small indexes (called local indexes) combined with several alignment strategies enable effective alignment of sequencing reads. This new indexing scheme is called Hierarchical Graph FM index (HGFM). We have developed HISAT2 based on the HISAT [2] and Bowtie 2 [3] implementations.  See the [HISAT2 website](http://ccb.jhu.edu/software/hisat2/index.shtml) for
-more information.
+# HISAT-genotype
 
-A few notes:
+This is the official HISAT-genotype Repository.
 
-1) HISAT2's index (HGFM) size for the human reference genome and 12.3 million common SNPs is 6.2GB. The SNPs consist of 11 million single nucleotide polymorphisms, 728,000 deletions, and 555,000 insertions. Insertions and deletions used in this index are small (usually <20bp). We plan to incorporate structural variations (SV) into this index.
+Please see the official website for HISATgenotype:
+https://daehwankimlab.github.io/hisat-genotype/
 
-2) HISAT2 also allows for mapping reads directly to transcriptome, similar to that of TopHat2.
+*This directory no longer contains HISAT2. Please see the link below if you are looking for the newest HISAT2 release*
+https://daehwankimlab.github.io/hisat2/
 
-3) The memory footprint of HISAT2 is relatively low, 6.7GB.
+## Current Release Version
+v1.3.0 - Python 3 version
 
-4) The runtime of HISAT2 is estimated to be slightly slower than HISAT (30–100% slower for some data sets).
-
-5) HISAT2 provides greater accuracy for alignment of reads containing SNPs.
-
-6) We released a first (beta) version of HISAT2 in September 8, 2015.
-
-
-References:
-
-[1] Sirén J, Välimäki N, Mäkinen V (2014) Indexing graphs for path queries with applications in genome research. IEEE/ACM Transactions on Computational Biology and Bioinformatics 11: 375–388. doi: 10.1109/tcbb.2013.2297101
-
-[2] Kim D, Langmead B, and Salzberg SL  HISAT: a fast spliced aligner with low memory requirements, Nature methods, 2015
-
-[3] Langmead B, Salzberg SL: Fast gapped-read alignment with Bowtie 2. Nat Methods 2012, 9:357-359
+## Overview
+HISAT-genotype is a next-generation genomic analysis software platform capable of assembling and genotyping human genes and genomic regions. Thie software leverages HISAT2s graph FM index and graph alignemnt algorithm to align reads to a specially constructed graph genome. An Expectation-Maximization (EM) algorithm finds the maximum likelihood estimates for each gene allele and a guided de Bruijn graph is used to construct the allele sequences.
