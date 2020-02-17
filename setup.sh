@@ -24,7 +24,7 @@ HG_DIR=$(pwd)
 
 add_to_bash(){
     echo "Adding to $1 and sourcing"
-    echo "export PATH=$HG_DIR:\$PATH" >> $1
+    echo "export PATH=$HG_DIR:$HG_DIR/hisat2:\$PATH" >> $1
     echo "export PYTHONPATH=$HG_DIR/hisatgenotype_modules:\$PYTHONPATH" >> $1
     source $1
 }
@@ -32,8 +32,8 @@ add_to_bash(){
 # Files to check for
 DOWNLOADED="hisat2.cpp"
 BUILT="hisat2-align-s"
-BASHRC=~/.bashrc_tmp
-BASH_PROFILE=~/.bash_profile_tmp
+BASHRC=~/.bashrc
+BASH_PROFILE=~/.bash_profile
 
 ### This section downloads and sets-up hisat2 submodule
 echo "Setting up HISAT2"

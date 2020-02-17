@@ -324,36 +324,37 @@ def extract_bam(file_lists,
 """
 """
 if __name__ == '__main__':
-    version_file = '/'.join(os.path.realpath(__file__).split('/')[:-1]) + '/VERSION'
-    version_info = []
+    version_dir = '/'.join(os.path.realpath(__file__).split('/')[:-1])
     try:
-        with open(version_file, 'r') as vfi:
-            for line in vfi:
-                line = line.strip()
-                version_info.append(line)
+        h2_v = open(version_dir + "/hisat2/VERSION", "r").read().strip()
+        hg_v = open(version_dir + "/VERSION", "r").read().strip()
+        version_info = [h2_v, hg_v]
     except:
         version_info = ['', '']
 
     parser = ArgumentParser(
         description='HISAT-Genotype %s (Built on HISAT2 %s)' % (version_info[1], version_info[0]),
         epilog='See --advanced-help for further options available')
+
     arguments.args_databases(parser,
                              genome=True) # Add option to change genome name
     arguments.args_aligner_inputs(parser,
                                   keep=True) # Add option to keep alignments
+
     arguments.args_input_output(parser)                              
     arguments.args_bamfile(parser)
+
     parser.add_argument('--pass-extract',
                         dest='already_extract',
                         action='store_true',
                         help='Skip read extraction if the read files input are already extracted by --base'
                         )
+
     arguments.args_single_end(parser)
     arguments.args_assembly(parser)
     arguments.args_common(parser)
 
-
-
+    ### Advanced parser information
     parser_advanced = ArgumentParser(
         description='Advanced Options',
         add_help=False)
