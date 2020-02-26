@@ -238,7 +238,7 @@ def record_variants(aligner,
                     threads):
     if first_align:
         if reference == "":
-            print >> sys.stderr, "Error: --ref-genome or -x option not set"
+            print("Error: --ref-genome or -x option not set", file=sys.stderr)
             exit(1)
 
         fname_prefix = read_fnames[0].split('.')[0]
@@ -305,7 +305,7 @@ if __name__ == '__main__':
 
     args.aligner = args.aligner.lower()
     if args.aligner not in ['hisat2', 'bowtie2', 'bwa']:
-        print >> sys.stderr, "Error: --alinger supports hisat2, bowtie2, or bwa"
+        print("Error: --alinger supports hisat2, bowtie2, or bwa", file=sys.stderr)
         exit(1)
 
     read_fnames, bam_fname = [], []
@@ -313,18 +313,18 @@ if __name__ == '__main__':
         read_fnames = [args.read_fname_U]
     elif args.read_fname_1 or args.read_fname_2:
         if not args.read_fname_1 or not args.read_fname_2:
-            print >> sys.stderr, "Error: Please specify both -1 and -2 options"
+            print("Error: Please specify both -1 and -2 options", file=sys.stderr)
             exit(1)
         read_fnames = [args.read_fname_1,
                        args.read_fname_2]
     elif args.alignment_fname:
         bam_fname = [args.alignment_fname]
     else:
-        print >> sys.stderr, "Error: Please provide file options"
+        print("Error: Please provide file options", file=sys.stderr)
         exit(1)
 
     if not ((read_fnames or bam_fname) and not (read_fnames and bam_fname)):
-        print >> sys.stderr, "Error: Please don't use both --bamfile and -U / -1,-2 options"
+        print("Error: Please don't use both --bamfile and -U / -1,-2 options", file=sys.stderr)
         exit(1)
 
     sopts = []

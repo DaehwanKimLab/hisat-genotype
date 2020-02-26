@@ -45,4 +45,4 @@ if __name__ == '__main__':
 
     
     for allele, counts in result_list.items():
-        print '%s\tTotal: %d\tCorrect: %d\tPercent: %d\tCalled as: %s' % (allele, counts[0], counts[1], (counts[1]*100)/counts[0], counts[2])         
+        print('%s\tTotal: %d\tCorrect: %d\tPercent: %d\tCalled as: %s' % (allele, counts[0], counts[1], (counts[1]*100)/counts[0], counts[2]) )        

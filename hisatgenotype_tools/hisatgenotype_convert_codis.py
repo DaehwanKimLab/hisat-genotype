@@ -29,7 +29,7 @@ import hisatgenotype_args as arguments
 try:
     import openpyxl
 except ImportError:
-    print >> sys.stderr, "Error: please install openpyxl by running 'pip install openpyxl'."
+    print("Error: please install openpyxl by running 'pip install openpyxl'.", file=sys.stderr)
     sys.exit(1)
 
 
@@ -226,7 +226,7 @@ def get_flanking_seqs(seq,
 def get_equal_score(repeat_i, repeat_nums_i, repeat_j, repeat_nums_j):
     if repeat_i == repeat_j:
         # DK - experimental SW alignment
-        min_diff = sys.maxint
+        min_diff = sys.maxsize
         for repeat_num_i in repeat_nums_i:
             for repeat_num_j in repeat_nums_j:
                 min_diff = min(abs(repeat_num_i - repeat_num_j), min_diff)
@@ -363,11 +363,7 @@ def extract_msa(base_dname,
                 min_freq,
                 verbose):    
     # Download human genome and HISAT2 index
-    HISAT2_fnames = ["grch38",
-                     "genome.fa",
-                     "genome.fa.fai"]
-    if not typing_common.check_files(HISAT2_fnames):
-        typing_common.download_genome_and_index(ex_path)
+    typing_common.download_genome_and_index()
 
     # Load allele frequency information
     allele_freq = {}
@@ -408,7 +404,7 @@ def extract_msa(base_dname,
         CODIS_seq[locus_name][1] = left_flank_seq + left_seq
         CODIS_seq[locus_name][3] = right_seq + right_flank_seq
 
-        print >> sys.stderr, "%s is found on the reference genome (GRCh38)" % locus_name
+        print( "%s is found on the reference genome (GRCh38)" % locus_name, file=sys.stderr)
     
     for locus_name in CODIS_seq.keys():
         alleles = []
@@ -500,8 +496,8 @@ def extract_msa(base_dname,
             for allele_id, repeat_st in alleles:
                 allele_seq = to_sequence(repeat_st)
                 if allele_seq in seq_to_ids:
-                    print >> sys.stderr, "Warning) %s: %s has the same sequence as %s" % \
-                        (locus_name, allele_id, seq_to_ids[allele_seq])
+                    print("Warning: %s: %s has the same sequence as %s" % \
+                        (locus_name, allele_id, seq_to_ids[allele_seq]), file = sys.stderr)
                     continue
                 if allele_seq not in seq_to_ids:
                     seq_to_ids[allele_seq] = [allele_id]
@@ -529,28 +525,28 @@ def extract_msa(base_dname,
             allele_seqs = [[allele_id, ref_allele]] + allele_seqs
             alleles = [[allele_id, ref_allele_st]] + alleles
 
-        print >> sys.stderr, "%s: %d alleles with reference allele as %s" % (locus_name, len(alleles), CODIS_ref_name[locus_name])
+        print("%s: %d alleles with reference allele as %s" % (locus_name, len(alleles), CODIS_ref_name[locus_name]), file=sys.stderr)
         if verbose:
-            print >> sys.stderr, "\t", ref_allele_left, ref_allele, ref_allele_right
+            print(("\t", ref_allele_left, ref_allele, ref_allele_right), file=sys.stderr)
             for allele_id, allele in alleles:
-                print >> sys.stderr, allele_id, "\t", allele
+                print((allele_id, "\t", allele), file=sys.stderr)
 
         # Create a backbone sequence
         assert len(alleles) > 0
         backbone_allele = deepcopy(alleles[-1][1])
         for allele_id, allele_st in reversed(alleles[:-1]):
             if verbose:
-                print >> sys.stderr
-                print >> sys.stderr, allele_id
-                print >> sys.stderr, "backbone         :", backbone_allele
-                print >> sys.stderr, "allele           :", allele_st
+                print(file=sys.stderr)
+                print(allele_id, file=sys.stderr)
+                print(("backbone         :", backbone_allele), file=sys.stderr)
+                print(("allele           :", allele_st), file=sys.stderr)
             backbone_allele = combine_alleles(backbone_allele, allele_st)
             msf_allele_seq, msf_backbone_seq = msf_alignment(backbone_allele, allele_st)
             if verbose:                
-                print >> sys.stderr, "combined backbone:", backbone_allele
-                print >> sys.stderr, "msf_allele_seq  :", msf_allele_seq
-                print >> sys.stderr, "msf_backbone_seq:", msf_backbone_seq
-                print >> sys.stderr
+                print(("combined backbone:", backbone_allele), file=sys.stderr)
+                print(("msf_allele_seq  :", msf_allele_seq), file=sys.stderr)
+                print(("msf_backbone_seq:", msf_backbone_seq), file=sys.stderr)
+                print(file=sys.stderr)
 
         allele_dic = {}
         for allele_id, allele_seq in allele_seqs:
@@ -588,14 +584,14 @@ def extract_msa(base_dname,
             for allele_id, msf in allele_msf.items():
                 assert len(msf) == msf_len
                 allele_name = "%s*%s" % (locus_name, allele_id)
-                print >> msf_file, "%20s" % allele_name,
+                print("%20s" % allele_name, file=msf_file)
                 for s2 in range(s, min(msf_len, s + 50), 10):
-                    print >> msf_file, " %s" % msf[s2:s2+10],
-                print >> msf_file
+                    print(" %s" % msf[s2:s2+10], file=msf_file)
+                print(file=msf_file)
 
             if s + 50 >= msf_len:
                 break
-            print >> msf_file
+            print(file=msf_file)
         msf_file.close()
 
         # Write FASTA file
@@ -603,9 +599,9 @@ def extract_msa(base_dname,
         fasta_file = open(fasta_fname, 'w')
         for allele_id, allele_seq in allele_seqs:
             gen_seq = ref_allele_left + allele_seq + ref_allele_right
-            print >> fasta_file, ">%s*%s %d bp" % (locus_name, allele_id, len(gen_seq))
+            print(">%s*%s %d bp" % (locus_name, allele_id, len(gen_seq)), file=fasta_file)
             for s in range(0, len(gen_seq), 60):
-                print >> fasta_file, gen_seq[s:s+60]
+                print(gen_seq[s:s+60], file=fasta_file)
         fasta_file.close()
 
 

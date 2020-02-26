@@ -29,7 +29,7 @@ if __name__ == '__main__':
     path = '/'.join(os.path.realpath(__file__).split('/')[:-1])
     path += '/hisatgenotype_tools/'
     if not os.path.exists(path):
-        print 'Error! Toolkit Directory not found at %s' % path
+        print('Error! Toolkit Directory not found at %s' % path)
         exit(1)
 
     scripts = []
@@ -75,11 +75,11 @@ if __name__ == '__main__':
     elif args.script_help:
         cmd += additional + ['--help']
     elif args.script not in ['conc-results']:
-        print >> sys.stderr, "Please provide options for tool selected"
+        print("Please provide options for tool selected", file=sys.stderr)
         exit(1)    
 
     if args.see_script:
-        print cmd
+        print(cmd)
     code = subprocess.call(cmd)
     if code != 0:
-        print 'Script exited with error %d' % code
+        print('Script exited with error %d' % code)

@@ -45,9 +45,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.locus_list:
-        print "--locus-list option not implemented in this script yet, skipping"
+        print("--locus-list option not implemented in this script yet, skipping")
     if not args.graph_index:
-        print "--linear-index not implemented yet, skipping"
+        print("--linear-index not implemented yet, skipping")
 
     if not args.genotype_genome:
         args.genotype_genome = 'genotype_genome'
@@ -61,24 +61,24 @@ if __name__ == '__main__':
         args.read_fname = [args.read_fname_U]
     elif args.read_fname_1 != "" or args.read_fname_2 != "":
         if args.read_fname_1 == "" or args.read_fname_2 == "":
-            print >> sys.stderr, "Error: please specify both -1 and -2."
+            print("Error: please specify both -1 and -2.", file=sys.stderr)
             sys.exit(1)
         args.read_fname = [args.read_fname_1, args.read_fname_2]
     else:
         args.read_fname = []
     if len(args.read_fname) == 0:
         if args.read_dir == "" or not os.path.exists(args.read_dir):
-            print >> sys.stderr, "Error: please specify --read-dir with an existing directory."
+            print("Error: please specify --read-dir with an existing directory.", file=sys.stderr)
             sys.exit(1)
         if args.out_dir == "":
-            print >> sys.stderr, "Error: please specify --out-dir with a directory name."
+            print("Error: please specify --out-dir with a directory name.", file=sys.stderr)
             sys.exit(1)
     job_range = []
     for num in args.job_range.split(','):
         job_range.append(int(num))
 
     if args.aligner not in ["hisat2", "bowtie2"]:
-        print >> sys.stderr, "Error: --aligner should be either hisat2 or bowtie2."
+        print("Error: --aligner should be either hisat2 or bowtie2.", file=sys.stderr)
         sys.exit(1)        
     block_size = 20000000 if args.extract_whole else 0
     
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     else:
         paired = args.paired
         if (args.read_fname_1 != "" and args.read_fname_2 != "") and not paired:
-            print >> sys.stderr, "Error: Don't set --single-end when using -1 and -2 options."
+            print("Error: Don't set --single-end when using -1 and -2 options.", file=sys.stderr)
             exit(1)
 
     _ = extract_reads(args.genotype_genome,

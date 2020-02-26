@@ -52,7 +52,7 @@ if __name__ == '__main__':
     else:
         locus_list = args.locus_list.split(',')
     if args.inter_gap > args.intra_gap:
-        print >> sys.stderr, "Error: --inter-gap (%d) must be smaller than --intra-gap (%d)" % (args.inter_gap, args.intra_gap)
+        print("Error: --inter-gap (%d) must be smaller than --intra-gap (%d)" % (args.inter_gap, args.intra_gap), file=sys.stderr)
         sys.exit(1)
     
     # Clone hisatgenotype database from git

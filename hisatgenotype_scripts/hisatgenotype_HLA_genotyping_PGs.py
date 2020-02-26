@@ -85,7 +85,7 @@ def test_HLA_genotyping(reference_type,
     ex_path = os.path.dirname(curr_script)
 
     if not os.path.exists("illumina/HLA"):
-        print >> sys.stderr, "Error: illumina/HLA data is needed (please send an email to infphilo@gmail.com for getting the data)"
+        print("Error: illumina/HLA data is needed (please send an email to infphilo@gmail.com for getting the data)", file=sys.stderr)
         sys.exit(1)
 
     num_test, num_success = 0, 0
@@ -96,14 +96,14 @@ def test_HLA_genotyping(reference_type,
         read_fname_1, read_fname_2 = "illumina/HLA/%s.fished_1.fq" % genome, "illumina/HLA/%s.fished_2.fq" % genome
         if not os.path.exists(read_fname_1) or not os.path.exists(read_fname_2):
             continue
-        print >> sys.stderr, genome        
+        print(genome, file=sys.stderr)
         cmd_aligners = ['.'.join(aligners[i]) for i in range(len(aligners))]
         test_hla_script = os.path.join(ex_path, "hisat2_test_HLA_genotyping.py")
         for gene in sorted(genes.keys()):
             if not gene in hla_list:
                 continue
             alleles = genes[gene]
-            print >> sys.stderr, "\t%s - %s" % (gene, ' / '.join(alleles))            
+            print("\t%s - %s" % (gene, ' / '.join(alleles)), file=sys.stderr)           
             test_hla_cmd = [test_hla_script,
                             "--reference-type", reference_type,
                             "--hla-list", gene,
@@ -114,13 +114,13 @@ def test_HLA_genotyping(reference_type,
                             "--num-mismatch", str(num_mismatch)]
 
             if verbose:
-                print >> sys.stderr, ' '.join(test_hla_cmd)
+                print(' '.join(test_hla_cmd), file=sys.stderr)
             
             proc = subprocess.Popen(test_hla_cmd, stdout=subprocess.PIPE, stderr=open("/dev/null", 'w'))
             num_test += 2
             test_alleles = set()
             for line in proc.stdout:
-                print "\t\t", line,
+                print("\t\t", line)
                 model, allele = line.split()[:2]
                 if model != "SingleModel":
                     continue
@@ -132,7 +132,7 @@ def test_HLA_genotyping(reference_type,
                 if allele in test_alleles:
                     num_success += 1
 
-    print >> sys.stderr, "%d/%d (%.2f%%)" % (num_success, num_test, num_success * 100.0 / num_test)
+    print("%d/%d (%.2f%%)" % (num_success, num_test, num_success * 100.0 / num_test), file=sys.stderr)
 
 
 """
@@ -149,12 +149,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if not args.reference_type in ["gene", "chromosome", "genome"]:
-        print >> sys.stderr, "Error: --reference-type (%s) must be one of gene, chromosome, and genome." % (args.reference_type)
+        print("Error: --reference-type (%s) must be one of gene, chromosome, and genome." % (args.reference_type), file=sys.stderr)
         sys.exit(1)
     args.hla_list = args.hla_list.split(',')
     
     if args.aligners == "":
-        print >> sys.stderr, "Error: --aligners must be non-empty."
+        print("Error: --aligners must be non-empty.", file=sys.stderr)
         sys.exit(1)    
     
     if ',' not in args.aligner or '.' not in args.aligner:

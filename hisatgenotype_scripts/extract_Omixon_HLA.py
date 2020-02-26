@@ -44,9 +44,9 @@ if __name__ == '__main__':
                     nuc_alleles[gene] = set()
                 nuc_alleles[gene].add(allele)
 
-    print >> sys.stderr, "IMGTHLA"
+    print("IMGTHLA")
     for gene, alleles in nuc_alleles.items():
-        print >> sys.stderr, "\t%s: %d alleles" % (gene, len(alleles))
+        print("\t%s: %d alleles" % (gene, len(alleles)))
 
     # Read HLA alleles from Omixon data
     omixon_alleles = {}
@@ -95,11 +95,11 @@ if __name__ == '__main__':
             omixon_alleles[gene].add(allele2)
             prev_allele1, prev_allele2 = allele1, allele2
 
-            print "%s\t%s\t%s" % (genome, allele1, allele2)
+            print("%s\t%s\t%s" % (genome, allele1, allele2))
 
-    print >> sys.stderr, "Omixon"
+    print("Omixon")
     for gene, alleles in omixon_alleles.items():
-        print >> sys.stderr, "\t%s: %d alleles" % (gene, len(alleles))
+        print("\t%s: %d alleles" % (gene, len(alleles)))
         for allele in alleles:
             if allele in nuc_alleles[gene]:
                 continue
@@ -110,6 +110,6 @@ if __name__ == '__main__':
                     break                    
 
             if not found:
-                print >> sys.stderr, "\t\t%s is missing" % allele
+                print("\t\t%s is missing" % allele, file=sys.stderr)
 
             

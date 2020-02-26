@@ -1,4 +1,0 @@
-[submodule "hisat2"]
-	path = hisat2
-	url = https://github.com/DaehwanKimLab/hisat2.git
-	branch = hisatgenotype

@@ -63,8 +63,8 @@ def simulate_reads(HLAs,
     def write_reads(reads, idx):
         read_file = open('hla_input_%d.fa' % idx, 'w')
         for read_i in range(len(reads)):
-            print >> read_file, ">%d" % (read_i + 1)
-            print >> read_file, reads[read_i]
+            print(">%d" % (read_i + 1), file=read_file)
+            print(reads[read_i], file=read_file)
         read_file.close()
     write_reads(HLA_reads_1, 1)
     write_reads(HLA_reads_2, 2)
@@ -107,7 +107,7 @@ def align_reads(ex_path,
                         "-2", "%s" % read_fname[1]]
 
     if verbose:
-        print >> sys.stderr, ' '.join(aligner_cmd)
+        print(' '.join(aligner_cmd), file=sys.stderr)
     align_proc = subprocess.Popen(aligner_cmd,
                                   stdout=subprocess.PIPE,
                                   stderr=open("/dev/null", 'w'))
@@ -351,9 +351,9 @@ def HLA_typing(ex_path,
         test_passed = {}
     for aligner, index_type in aligners:
         if index_type == "graph":
-            print >> sys.stderr, "\n\t\t%s %s on %s" % (aligner, index_type, reference_type)
+            print("\n\t\t%s %s on %s" % (aligner, index_type, reference_type), file=sys.stderr)
         else:
-            print >> sys.stderr, "\n\t\t%s %s" % (aligner, index_type)
+            print("\n\t\t%s %s" % (aligner, index_type), file=sys.stderr)
 
         if alignment_fname == "":
             # Align reads, and sort the alignments into a BAM file
@@ -449,8 +449,8 @@ def HLA_typing(ex_path,
                     debug = False
                     if read_id in ["2339"] and False:
                         debug = True
-                        print "read_id: %s)" % read_id, pos, cigar_str, "NM:", NM, MD, Zs
-                        print "            ", read_seq
+                        print("read_id: %s)" % read_id, pos, cigar_str, "NM:", NM, MD, Zs)
+                        print("            ", read_seq)
 
                     vars = []
                     if Zs:
@@ -572,13 +572,13 @@ def HLA_typing(ex_path,
                             elif allele == alleles[1]:
                                 allele2_found = True
                         if allele1_found != allele2_found:
-                            print alleles[0], HLA_count_per_read[alleles[0]]
-                            print alleles[1], HLA_count_per_read[alleles[1]]
+                            print(alleles[0], HLA_count_per_read[alleles[0]])
+                            print(alleles[1], HLA_count_per_read[alleles[1]])
                             if allele1_found:
-                                print ("%s\tread_id %s - %d vs. %d]" % (alleles[0], prev_read_id, max_count, HLA_count_per_read[alleles[1]]))
+                                print("%s\tread_id %s - %d vs. %d]" % (alleles[0], prev_read_id, max_count, HLA_count_per_read[alleles[1]]))
                             else:
-                                print ("%s\tread_id %s - %d vs. %d]" % (alleles[1], prev_read_id, max_count, HLA_count_per_read[alleles[0]]))
-                            print read_seq
+                                print("%s\tread_id %s - %d vs. %d]" % (alleles[1], prev_read_id, max_count, HLA_count_per_read[alleles[0]]))
+                            print(read_seq)
 
                         cur_cmpt = sorted(list(cur_cmpt))
                         cur_cmpt = '-'.join(cur_cmpt)
@@ -610,7 +610,7 @@ def HLA_typing(ex_path,
                             # daehwan - for debugging purposes
                             if debug:
                                 if allele in ["DQA1*05:05:01:01", "DQA1*05:05:01:02"]:
-                                    print allele, add, var_id
+                                    print(allele, add, var_id)
 
                     # Decide which allele(s) a read most likely came from
                     # also sanity check - read length, cigar string, and MD string
@@ -638,13 +638,13 @@ def HLA_typing(ex_path,
                                             add_count(var_id, -1)
                                             # daehwan - for debugging purposes
                                             if debug:
-                                                print cmp, var_id, Links[var_id]
+                                                print(cmp, var_id, Links[var_id])
                                     elif var_type == "deletion":
                                         del_len = int(var_data)
                                         if ref_pos < var_pos and ref_pos + length > var_pos + del_len:
                                             # daehwan - for debugging purposes
                                             if debug:
-                                                print cmp, var_id, Links[var_id], -1, Vars[gene][var_id]
+                                                print(cmp, var_id, Links[var_id], -1, Vars[gene][var_id])
                                             # Check if this might be one of the two tandem repeats (the same left coordinate)
                                             cmp_left, cmp_right = cmp[1], cmp[1] + cmp[2]
                                             test1_seq1 = ref_seq[cmp_left:cmp_right]
@@ -658,7 +658,7 @@ def HLA_typing(ex_path,
                                                 add_count(var_id, -1)
                                     else:
                                         if debug:
-                                            print cmp, var_id, Links[var_id], -1
+                                            print(cmp, var_id, Links[var_id], -1)
                                         add_count(var_id, -1)
                                 var_idx += 1
 
@@ -679,7 +679,7 @@ def HLA_typing(ex_path,
                                         if var_data == read_base:
                                             # daehwan - for debugging purposes
                                             if debug:
-                                                print cmp, var_id, 1, var_data, read_base, Links[var_id]
+                                                print(cmp, var_id, 1, var_data, read_base, Links[var_id])
 
                                             # daehwan - for debugging purposes
                                             if False:
@@ -702,8 +702,8 @@ def HLA_typing(ex_path,
                             var_idx = lower_bound(Var_list[gene], ref_pos)
                             # daehwan - for debugging purposes
                             if debug:
-                                print left_pos, cigar_str, MD, vars
-                                print ref_pos, ins_seq, Var_list[gene][var_idx], Vars[gene][Var_list[gene][var_idx][1]]
+                                print(left_pos, cigar_str, MD, vars)
+                                print(ref_pos, ins_seq, Var_list[gene][var_idx], Vars[gene][Var_list[gene][var_idx][1]])
                                 # sys.exit(1)
                             while var_idx < len(Var_list[gene]):
                                 var_pos, var_id = Var_list[gene][var_idx]
@@ -715,7 +715,7 @@ def HLA_typing(ex_path,
                                         if var_data == ins_seq:
                                             # daehwan - for debugging purposes
                                             if debug:
-                                                print cmp, var_id, 1, Links[var_id]
+                                                print(cmp, var_id, 1, Links[var_id])
                                             add_count(var_id, 1)
                                 var_idx += 1
 
@@ -751,8 +751,8 @@ def HLA_typing(ex_path,
                                         var_len = int(var_data)
                                         if var_len == length:
                                             if debug:
-                                                print cmp, var_id, 1, Links[var_id]
-                                                print ref_seq[var_pos - 10:var_pos], ref_seq[var_pos:var_pos+int(var_data)], ref_seq[var_pos+int(var_data):var_pos+int(var_data)+10]
+                                                print(cmp, var_id, 1, Links[var_id])
+                                                print(ref_seq[var_pos - 10:var_pos], ref_seq[var_pos:var_pos+int(var_data)], ref_seq[var_pos+int(var_data):var_pos+int(var_data)+10])
                                             add_count(var_id, 1)
                                 var_idx += 1
 
@@ -783,9 +783,9 @@ def HLA_typing(ex_path,
                     if read_pos != len(read_seq) or \
                             cmp_cigar_str != cigar_str or \
                             cmp_MD != MD:
-                        print >> sys.stderr, "Error:", cigar_str, MD
-                        print >> sys.stderr, "\tcomputed:", cmp_cigar_str, cmp_MD
-                        print >> sys.stderr, "\tcmp list:", cmp_list
+                        print(("Error:", cigar_str, MD), file=sys.stderr)
+                        print(("\tcomputed:", cmp_cigar_str, cmp_MD), file=sys.stderr)
+                        print(("\tcmp list:", cmp_list), file=sys.stderr)
                         assert False            
 
                     prev_read_id = read_id
@@ -904,7 +904,7 @@ def HLA_typing(ex_path,
                     found = False
                     for test_HLA_name in test_HLA_names:
                         if count[0] == test_HLA_name:
-                            print >> sys.stderr, "\t\t\t*** %d ranked %s (count: %d)" % (count_i + 1, test_HLA_name, count[1])
+                            print("\t\t\t*** %d ranked %s (count: %d)" % (count_i + 1, test_HLA_name, count[1]))
                             found = True
                             """
                             if count_i > 0 and HLA_counts[0][1] > count[1]:
@@ -914,12 +914,12 @@ def HLA_typing(ex_path,
                                 test_passed += 1
                             """
                     if count_i < 5 and not found:
-                        print >> sys.stderr, "\t\t\t\t%d %s (count: %d)" % (count_i + 1, count[0], count[1])
+                        print("\t\t\t\t%d %s (count: %d)" % (count_i + 1, count[0], count[1]))
                 else:
-                    print >> sys.stderr, "\t\t\t\t%d %s (count: %d)" % (count_i + 1, count[0], count[1])
+                    print("\t\t\t\t%d %s (count: %d)" % (count_i + 1, count[0], count[1]))
                     if count_i >= 9:
                         break
-            print >> sys.stderr
+            print("\n")
 
             HLA_prob = single_abundance(HLA_cmpt, HLA_lengths[gene])
 
@@ -938,7 +938,7 @@ def HLA_typing(ex_path,
                                     rank_i -= 1
                                 else:
                                     break
-                            print >> sys.stderr, "\t\t\t*** %d ranked %s (abundance: %.2f%%)" % (rank_i + 1, test_HLA_name, prob[1] * 100.0)
+                            print("\t\t\t*** %d ranked %s (abundance: %.2f%%)" % (rank_i + 1, test_HLA_name, prob[1] * 100.0))
                             if rank_i < len(success):
                                 success[rank_i] = True
                             found_list[name_i] = True
@@ -946,12 +946,12 @@ def HLA_typing(ex_path,
                     if not False in found_list:
                         break
                 if not found:
-                    print >> sys.stderr, "\t\t\t\t%d ranked %s (abundance: %.2f%%)" % (prob_i + 1, prob[0], prob[1] * 100.0)
+                    print("\t\t\t\t%d ranked %s (abundance: %.2f%%)" % (prob_i + 1, prob[0], prob[1] * 100.0))
                     if best_alleles and prob_i < 2:
-                        print >> sys.stdout, "SingleModel %s (abundance: %.2f%%)" % (prob[0], prob[1] * 100.0)
+                        print("SingleModel %s (abundance: %.2f%%)" % (prob[0], prob[1] * 100.0))
                 if not simulation and prob_i >= 9:
                     break
-            print >> sys.stderr
+            print("\n")
 
             if len(test_HLA_names) == 2 or not simulation:
                 HLA_prob = joint_abundance(HLA_cmpt, HLA_lengths[gene])
@@ -962,7 +962,7 @@ def HLA_typing(ex_path,
                     allele_pair, prob = HLA_prob[prob_i]
                     allele1, allele2 = allele_pair.split('-')
                     if best_alleles and prob_i < 1:
-                        print >> sys.stdout, "PairModel %s (abundance: %.2f%%)" % (allele_pair, prob * 100.0)
+                        print("PairModel %s (abundance: %.2f%%)" % (allele_pair, prob * 100.0))
                     if simulation:
                         if allele1 in test_HLA_names and allele2 in test_HLA_names:
                             rank_i = prob_i
@@ -971,14 +971,14 @@ def HLA_typing(ex_path,
                                     rank_i -= 1
                                 else:
                                     break
-                            print >> sys.stderr, "\t\t\t*** %d ranked %s (abundance: %.2f%%)" % (rank_i + 1, allele_pair, prob * 100.0)
+                            print("\t\t\t*** %d ranked %s (abundance: %.2f%%)" % (rank_i + 1, allele_pair, prob * 100.0))
                             if rank_i == 0:
                                 success[0] = True
                             break
-                    print >> sys.stderr, "\t\t\t\t%d ranked %s (abundance: %.2f%%)" % (prob_i + 1, allele_pair, prob * 100.0)
+                    print("\t\t\t\t%d ranked %s (abundance: %.2f%%)" % (prob_i + 1, allele_pair, prob * 100.0))
                     if not simulation and prob_i >= 9:
                         break
-                print >> sys.stderr
+                print("\n")
 
                 # Li's method
                 """
@@ -1150,7 +1150,7 @@ def genotyping(base_fname,
             extract_cmd += ["--hla-list", ','.join(hla_list)]
 
         if len(exclude_allele_list) > 0:
-            print exclude_allele_list
+            print(exclude_allele_list)
             extract_cmd += ["--exclude-allele-list", ",".join(exclude_allele_list)]
 
         if len(base_fname) > 3:
@@ -1161,12 +1161,12 @@ def genotyping(base_fname,
         extract_cmd += ["--inter-gap", "30",
                         "--intra-gap", "50"]
         if verbose:
-            print >> sys.stderr, "\tRunning:", ' '.join(extract_cmd)
+            print("\tRunning:", ' '.join(extract_cmd), file=sys.stderr)
         proc = subprocess.Popen(extract_cmd, stdout=open("/dev/null", 'w'), stderr=open("/dev/null", 'w'))
         proc.communicate()
         
         if not check_files(HLA_fnames):
-            print >> sys.stderr, "Error: extract_HLA_vars failed!"
+            print("Error: extract_HLA_vars failed!", file=sys.stderr)
             sys.exit(1)
             
     for aligner, index_type in aligners:
@@ -1182,11 +1182,11 @@ def genotyping(base_fname,
                              HLA_fnames[0],
                              "%s.graph" % base_fname]
                 if verbose:
-                    print >> sys.stderr, "\tRunning:", ' '.join(build_cmd)
+                    print("\tRunning:", ' '.join(build_cmd), file=sys.stderr)
                 proc = subprocess.Popen(build_cmd, stdout=open("/dev/null", 'w'), stderr=open("/dev/null", 'w'))
                 proc.communicate()        
                 if not check_files(HLA_hisat2_graph_index_fnames):
-                    print >> sys.stderr, "Error: indexing HLA failed!  Perhaps, you may have forgotten to build hisat2 executables?"
+                    print("Error: indexing HLA failed!  Perhaps, you may have forgotten to build hisat2 executables?", file=sys.stderr)
                     sys.exit(1)
 
         # Build HISAT2 linear indexes based on the above information
@@ -1200,7 +1200,7 @@ def genotyping(base_fname,
                 proc = subprocess.Popen(build_cmd, stdout=open("/dev/null", 'w'), stderr=open("/dev/null", 'w'))
                 proc.communicate()        
                 if not check_files(HLA_hisat2_linear_index_fnames):
-                    print >> sys.stderr, "Error: indexing HLA failed!"
+                    print("Error: indexing HLA failed!", file=sys.stderr)
                     sys.exit(1)
 
         # Build Bowtie2 indexes based on the above information
@@ -1215,7 +1215,7 @@ def genotyping(base_fname,
                 proc = subprocess.Popen(build_cmd, stdout=open("/dev/null", 'w'))
                 proc.communicate()        
                 if not check_files(HLA_bowtie2_index_fnames):
-                    print >> sys.stderr, "Error: indexing HLA failed!"
+                    print("Error: indexing HLA failed!", file=sys.stderr)
                     sys.exit(1)
         
     # Read partial alleles from hla.data (temporary)
@@ -1250,12 +1250,12 @@ def genotyping(base_fname,
             extract_cmd += ["--inter-gap", "30",
                             "--intra-gap", "50"]
             if verbose:
-                print >> sys.stderr, "\tRunning:", ' '.join(extract_cmd)
+                print("\tRunning:", ' '.join(extract_cmd), file=sys.stderr)
             proc = subprocess.Popen(extract_cmd, stdout=open("/dev/null", 'w'), stderr=open("/dev/null", 'w'))
             proc.communicate()
             
             if not os.path.exists("./Default-HLA/hla_backbone.fa"):
-                print >> sys.stderr, "Error: extract_HLA_vars (Default) failed!"
+                print("Error: extract_HLA_vars (Default) failed!", file=sys.stderr)
                 sys.exit(1)
     
     # Read HLA alleles (names and sequences)
@@ -1393,7 +1393,7 @@ def genotyping(base_fname,
                 if str(test_i + 1) not in daehwan_test_ids:
                     continue
 
-            print >> sys.stderr, "Test %d" % (test_i + 1)
+            print("Test %d" % (test_i + 1), file=sys.stderr)
             test_HLA_list = test_list[test_i]
            
             # daehwan - for debugging purposes
@@ -1404,12 +1404,12 @@ def genotyping(base_fname,
                         gene = test_HLA_name.split('*')[0]
                         test_HLA_seq = HLAs_default[gene][test_HLA_name]
                         seq_type = "partial" if test_HLA_name in partial_alleles else "full"
-                        print >> sys.stderr, "\t%s - %d bp (%s sequence)" % (test_HLA_name, len(test_HLA_seq), seq_type)
+                        print("\t%s - %d bp (%s sequence)" % (test_HLA_name, len(test_HLA_seq), seq_type), file=sys.stderr)
                         continue
                     gene = test_HLA_name.split('*')[0]
                     test_HLA_seq = HLAs[gene][test_HLA_name]
                     seq_type = "partial" if test_HLA_name in partial_alleles else "full"
-                    print >> sys.stderr, "\t%s - %d bp (%s sequence)" % (test_HLA_name, len(test_HLA_seq), seq_type)
+                    print("\t%s - %d bp (%s sequence)" % (test_HLA_name, len(test_HLA_seq), seq_type), file=sys.stderr)
             if custom_allele_check:
                 simulate_reads(HLAs_default, test_HLA_list, simulate_interval)
             else:
@@ -1453,18 +1453,18 @@ def genotyping(base_fname,
                 else:
                     test_passed[aligner_type] = passed
 
-                print >> sys.stderr, "\t\tPassed so far: %d/%d (%.2f%%)" % (test_passed[aligner_type], test_i + 1, (test_passed[aligner_type] * 100.0 / (test_i + 1)))
+                print("\t\tPassed so far: %d/%d (%.2f%%)" % (test_passed[aligner_type], test_i + 1, (test_passed[aligner_type] * 100.0 / (test_i + 1))), file=sys.stderr)
 
 
         for aligner_type, passed in test_passed.items():
-            print >> sys.stderr, "%s:\t%d/%d passed (%.2f%%)" % (aligner_type, passed, len(test_list), passed * 100.0 / len(test_list))
+            print("%s:\t%d/%d passed (%.2f%%)" % (aligner_type, passed, len(test_list), passed * 100.0 / len(test_list)), file=sys.stderr)
     
     else: # With real reads or BAMs
         if base_fname == "hla":
             gene_list = hla_list
         else:
             gene_list = Vars.keys()
-        print >> sys.stderr, "\t", ' '.join(gene_list)
+        print("\t", ' '.join(gene_list), file=sys.stderr)
 
         fastq = True
         HLA_typing(ex_path,
@@ -1515,12 +1515,12 @@ if __name__ == '__main__':
         args.locus_list = 'A,B,C,DQA1,DQB1,DRB1'
 
     if not args.reference_type in ["gene", "chromosome", "genome"]:
-        print >> sys.stderr, "Error: --reference-type (%s) must be one of gene, chromosome, and genome." % (args.reference_type)
+        print("Error: --reference-type (%s) must be one of gene, chromosome, and genome." % (args.reference_type), file=sys.stderr)
         sys.exit(1)
 
     args.hla_list = args.locus_list.split(',')
     if args.aligners == "":
-        print >> sys.stderr, "Error: --aligners must be non-empty."
+        print("Error: --aligners must be non-empty.", file=sys.stderr)
         sys.exit(1)    
 
     if args.aligners:
@@ -1536,7 +1536,7 @@ if __name__ == '__main__':
         args.read_fname = []
     if args.alignment_fname != "" and \
             not os.path.exists(args.alignment_fname):
-        print >> sys.stderr, "Error: %s doesn't exist." % args.alignment_fname
+        print("Error: %s doesn't exist." % args.alignment_fname, file=sys.stderr)
         sys.exit(1)
     
     if len(args.default_allele_list) > 0:
@@ -1561,11 +1561,11 @@ if __name__ == '__main__':
                 extract_cmd += ["--inter-gap", "30",
                                 "--intra-gap", "50"]
                 if args.verbose:
-                    print >> sys.stderr, "\tRunning:", ' '.join(extract_cmd)
+                    print("\tRunning:", ' '.join(extract_cmd), file=sys.stderr)
                 proc = subprocess.Popen(extract_cmd, stdout=open("/dev/null", 'w'), stderr=open("/dev/null", 'w'))
                 proc.communicate()
                 if not os.path.exists("./Default-HLA/hla_backbone.fa"):
-                    print >> sys.stderr, "Error: extract_HLA_vars (Default) failed!"
+                    print("Error: extract_HLA_vars (Default) failed!", file=sys.stderr)
                     sys.exit(1)
        
             HLAs_default = {}

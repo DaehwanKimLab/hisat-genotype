@@ -2,7 +2,6 @@
 
 import sys, os, subprocess, re
 import urllib2
-import string
 import xml.etree.ElementTree as etree
 from multiprocessing import Pool
 from argparse import ArgumentParser, FileType
@@ -51,7 +50,7 @@ def get_RefSeqID(locus = {}, verbose = False):
     try:
         website = get_website(webaddress, verbose)
     except ValueError:
-        if verbose: print >> sys.stderr, 'Cannot access refseq database at this time'
+        if verbose: print('Cannot access refseq database at this time', file=sys.stderr)
         raise ValueError()
 
     for line in website:
@@ -66,7 +65,7 @@ def get_seqbyRef(access, gene_name = '', getall = False, verbose = False):
     try:
         website = get_website(webaddress, verbose)
     except ValueError:
-        if verbose: print >> sys.stderr, 'No data available for accession: %s' % access
+        if verbose: print('No data available for accession: %s' % access, file=sys.stderr)
         raise ValueError()
 
     seqline = ''
@@ -144,7 +143,7 @@ def get_seqbyRef(access, gene_name = '', getall = False, verbose = False):
         
         return seqline, exon_ranges
     elif getall and not gene_found:
-        if verbose: print 'No exons found for gene %s in accession %s' % (gene_name, access)
+        if verbose: print('No exons found for gene %s in accession %s' % (gene_name, access))
         return seqline, exon_ranges.update({ gene_name : [-1, -1] })
     else:
         return seqline
@@ -384,7 +383,7 @@ def write_msf(threads, out_dir, genfilename, nucfilename, gene, allele_key, alle
                     elif right == '~':
                         seqs[itr] = seqs[itr][1:]
                     else:
-                        if verbose: print 'Error in boundry correction'
+                        if verbose: print('Error in boundry correction')
                         exit(1)
             
     for allele, seqs in msf_aligned_gen_list.items():
@@ -436,7 +435,7 @@ def extract_RBC(out_dir,
                 verbose):
     # RBC Database URL
     if verbose: 
-        print >> sys.stdout, 'Loading dbRBC from NCBI'
+        print('Loading dbRBC from NCBI')
     else:
         sys.stdout.write("Processing: [")
         sys.stdout.flush()
@@ -517,7 +516,7 @@ def extract_RBC(out_dir,
                 region = seqnode.find('type').text
 
                 alt_nuc = 'RYKMSWBDHV' # Make Translation Table 
-                seqReg = seq.translate(string.maketrans(alt_nuc, '.' * len(alt_nuc)))                
+                seqReg = seq.translate(str.maketrans(alt_nuc, '.' * len(alt_nuc)))                
                 raw_seq = seqReg.replace(emptySeq, '').replace('.', '')
                 if len(raw_seq) < 5:
                     raw_seq = ''
@@ -538,7 +537,7 @@ def extract_RBC(out_dir,
             if exon_counts[alleleGene] == 0:
                 exon_counts[alleleGene] = exon_count
             elif exon_counts[alleleGene] != exon_count:
-                if verbose: print "\t%s is inconsistent with other alleles: Removing" % alleleNam
+                if verbose: print("\t%s is inconsistent with other alleles: Removing" % alleleNam)
                 continue
             
             fullGene.update({ alleleNam : True })
@@ -556,7 +555,7 @@ def extract_RBC(out_dir,
  
     # Loading and adding RefSeq gene to data
     if verbose: 
-        print >> sys.stdout, 'Loading RefSeq of RBG Genes from NCBI'
+        print('Loading RefSeq of RBG Genes from NCBI')
     else:
         sys.stdout.write("====")
         sys.stdout.flush()
@@ -575,7 +574,7 @@ def extract_RBC(out_dir,
         try:
             seq_ofRef, exons_ofRef = get_seqbyRef(value[0], gene, True, verbose)
         except ValueError:
-            if verbose: print >> sys.stderr, '\tKey error %s not found: Removing' % gene
+            if verbose: print('\tKey error %s not found: Removing' % gene, file=sys.stderr)
             del refseq[gene]
             for name in locus[gene]:
                 del geneSegment[name]
@@ -586,7 +585,7 @@ def extract_RBC(out_dir,
         # Remove genes with non-matching exon numbers
         exon_num = len(exons_ofRef[gene])
         if exon_num != exon_counts[gene]:
-            if verbose: print "\tRemoving %s from data: Non-matching exon count to reference" % gene
+            if verbose: print("\tRemoving %s from data: Non-matching exon count to reference" % gene)
             for name in locus[gene]:
                 del geneSegment[name]
                 del accession[name]
@@ -598,7 +597,7 @@ def extract_RBC(out_dir,
     
     for gene, seq in refGeneSeq.items():
         newgene = gene + '*refSeq.01'
-        if verbose: print >> sys.stdout, '\tAdding %s to data' % newgene
+        if verbose: print('\tAdding %s to data' % newgene)
 
         genSeq.update({ newgene : refGeneSeq[gene] })
         genExon.update({ newgene : refGeneExon[gene] })
@@ -607,7 +606,7 @@ def extract_RBC(out_dir,
 
     # Remove Genes with less than 5 alleles and trim 5' end
     for gene, allelelist in locus.items():
-        if verbose: print "Trimming %s 5' end" % gene
+        if verbose: print("Trimming %s 5' end" % gene)
         if len(allelelist) < 5:
             del locus[gene]
             for name in allelelist:
@@ -659,7 +658,7 @@ def extract_RBC(out_dir,
                      
     # extract HG38 genes
     if verbose: 
-        print >> sys.stdout, 'Extracting Genes from HG38'
+        print('Extracting Genes from HG38')
     else:
         sys.stdout.write("====")
         sys.stdout.flush()
@@ -675,15 +674,15 @@ def extract_RBC(out_dir,
         hg_allele = gene + '*HG38.ref.01'
 
         skip = False
-        genestart = sys.maxint
+        genestart = sys.maxsize
         geneend = 0
         genechr = ''
         exons = []
 
-        if verbose: print '\tExtracting %s from Genome' % gene
+        if verbose: print('\tExtracting %s from Genome' % gene)
         cmd_aligner = ['hisat2', '-x', 'grch38/genome', '-f', '-c']
         
-        cds_start, cds_end, upstream, downstream = sys.maxint, 0, 0, 0
+        cds_start, cds_end, upstream, downstream = sys.maxsize, 0, 0, 0
         for pos in refGeneExon[gene]:
             _, exleft, exright = pos
             
@@ -715,7 +714,7 @@ def extract_RBC(out_dir,
             if flag & 0x10 != 0:
                 strand_reverse = True
             if flag & 0x100 != 0:
-                if verbose: print '\tWarning!: Gene %s with flag %d' % (gene, flag)
+                if verbose: print('\tWarning!: Gene %s with flag %d' % (gene, flag))
                 continue
             left = int(left) - 1
             right = left
@@ -735,7 +734,7 @@ def extract_RBC(out_dir,
             if not genechr:
                 genechr = chr
             elif genechr != chr and not skip:
-                if verbose: print "\tError: exons in Gene %s aligning to chr %s and %s: Not adding" % (gene, genechr, chr)
+                if verbose: print("\tError: exons in Gene %s aligning to chr %s and %s: Not adding" % (gene, genechr, chr))
                 skip = True
             
             exons.append([left, right])
@@ -792,7 +791,7 @@ def extract_RBC(out_dir,
 
     # Check and correct sequences in loaded data
     if verbose: 
-        print >> sys.stdout, 'Validating Alleles' 
+        print('Validating Alleles')
     else:
         sys.stdout.write("====")
         sys.stdout.flush()
@@ -808,7 +807,7 @@ def extract_RBC(out_dir,
         try:
             correct = match_seq(refGeneSeq[gene_name], seq)
         except ValueError:
-            if verbose: print "Problem with %s" % allele
+            if verbose: print("Problem with %s" % allele)
 
         if not correct and allele in accession:
             for accNumber in accession[allele]:
@@ -816,14 +815,14 @@ def extract_RBC(out_dir,
                     reffasta, refexon = get_seqbyRef(accNumber, gene_name, True, verbose)                  
                     match = match_seq(reffasta, seq)    
                 except ValueError:
-                    if verbose: print "Problem with %s" % allele
+                    if verbose: print("Problem with %s" % allele)
                     continue
        
                 if refexon is None or gene_name not in refexon:
                     continue
  
                 if not match:
-                    if verbose: print >> sys.stdout, 'Correcting %s' % allele
+                    if verbose: print('Correcting %s' % allele)
                     genSeq[allele] = reffasta
                     genExon[allele] = refexon[gene_name]
 
@@ -875,7 +874,7 @@ def extract_RBC(out_dir,
         sys.stdout.flush()
 
     for gene, allelelist in locus.items():
-        if verbose: print >> sys.stdout, 'Processing %s:' % gene
+        if verbose: print('Processing %s:' % gene)
         allele_index = {}
         msf_key = {}
         seq_list = []
@@ -888,7 +887,7 @@ def extract_RBC(out_dir,
             allele_index.update({ allele : itr })
             seq_list.append(genSeq[allele])
 
-        if verbose: print >> sys.stdout, '\t Checking %s for redundancy' % gene
+        if verbose: print('\t Checking %s for redundancy' % gene)
         allele_index, seq_list = typing_common.collapse_alleles(allele_index, seq_list, emptySeq, False, verbose)
 
         full_allele = {}
@@ -936,11 +935,11 @@ def extract_RBC(out_dir,
             if fullGene[allele]:
                 full_allele.update({ allele : seq })
 
-        if verbose: print >> sys.stdout, '\t Writing %s Fasta' % gene
+        if verbose: print('\t Writing %s Fasta' % gene)
         fastaname_gen = write_fasta(filepath, gene, full_allele)
         fastaname_nuc = write_fasta(filepath, gene, partial_allele, loc = 'nuc')
 
-        if verbose: print >> sys.stdout, '\t Writing %s MSF' % gene
+        if verbose: print('\t Writing %s MSF' % gene)
          
         write_msf(threads,
                   filepath,
@@ -970,7 +969,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.base_fname:
-        print "--base, --base-fname not supported yet, ignoring option"
+        print("--base, --base-fname not supported yet, ignoring option")
 
     if args.locus_list != '':
         gene_list = args.locus_list.upper().split(',')

@@ -85,7 +85,7 @@ def viterbi_path(trellis, states, verbose = False):
     vit, endpath = [[]], [-1,None]
 
     #initialize path
-    node_score = -sys.maxint
+    node_score = -sys.maxsize
     for i in range(len(trellis[0])):
         weight = trellis[0][i]
         if weight > node_score:
@@ -96,7 +96,7 @@ def viterbi_path(trellis, states, verbose = False):
     for t in range(1, len(trellis)):
         vit.append([])
         
-        node_score = -sys.maxint
+        node_score = -sys.maxsize
         for j in range(len(trellis[t])):
             (weight, state) = max([(vit[t-1][n]['weight'] + trellis[t][j], n) for n in range(len(vit[t-1]))], key = lambda x : x[0])
             if weight > node_score:
@@ -116,9 +116,9 @@ def viterbi_path(trellis, states, verbose = False):
         endpath = [t,prev]
 
     if verbose:
-        print "States: %s" % str(states)
-        print "Trellis: %s" % str(trellis)
-        print "Viterbi: %s" % str(vit)
+        print("States: %s" % str(states))
+        print("Trellis: %s" % str(trellis))
+        print("Viterbi: %s" % str(vit))
 
     return node_score, path[::-1]
 
@@ -230,12 +230,12 @@ class Node:
                     break
 
             if debug:
-                print "at %d (%d) with overlap of %d and mismatch of %.2f" % (i, self.left + i, j, tmp_mm)
+                print("at %d (%d) with overlap of %d and mismatch of %.2f" % (i, self.left + i, j, tmp_mm))
 
             if tmp_mm <= max_mm:
                 return i, min(len(seq) - i, len(other_seq)), tmp_mm
                 
-        return -1, -1, sys.maxint
+        return -1, -1, sys.maxsize
 
     
     # Combine two nodes with considering deletions
@@ -334,7 +334,7 @@ class Node:
 
     
     # Get variant ids
-    def get_var_ids(self, left = 0, right = sys.maxint):
+    def get_var_ids(self, left = 0, right = sys.maxsize):
         vars = []
         left = max(left, self.left)
         right = min(right, self.right)
@@ -367,7 +367,7 @@ class Node:
 
     # Get variant ids
     #   left and right are gene-level coordinates
-    def get_vars(self, left = 0, right = sys.maxint):
+    def get_vars(self, left = 0, right = sys.maxsize):
         vars = []
         left = max(left, self.left)
         right = min(right, self.right)
@@ -420,7 +420,6 @@ class Node:
     def get_avg_cov(self):
         return self.avg
 
-    
     # Calculate average coverage
     def calculate_avg_cov(self):
         self.avg = 0.0
@@ -430,7 +429,6 @@ class Node:
         self.avg /= len(self.seq)
         return self.avg
 
-        
     # Display node information
     def print_info(self, output=sys.stderr):
         seq, var_str = "", ""
@@ -470,15 +468,19 @@ class Node:
             if nt[0] == 'I':
                 ins_len += 1
         
-        print >> output, "Node ID:", self.id
-        print >> output, "Pos: [%d, %d], Avg. coverage: %.1f" % (self.left, self.right, self.get_avg_cov())
-        print >> output, "\t", seq
-        print >> output, "\t", var_str
-        print >> output, "mates:", len(self.mate_ids) # sorted(self.mate_ids)
-        print >> output, "reads:", len(self.read_ids) # sorted(self.read_ids)
-        print >> output
+        outlist = [
+            "Node ID: %s" % self.id,
+            "Pos: [%d, %d], Avg. coverage: %.1f" % (self.left, self.right, self.get_avg_cov()),
+            "\t%s" % seq,
+            "\t%s" % var_str,
+            "mates: %d" % len(self.mate_ids), # sorted(self.mate_ids)
+            "reads: %d" % len(self.read_ids), # sorted(self.read_ids)
+            "\n"         
+        ]
 
-                
+        for out in outlist:
+            print(out, file=output)
+
 class Graph:
     def __init__(self,
                  backbone,
@@ -490,32 +492,39 @@ class Graph:
                  predicted_allele_nodes = {},
                  display_allele_nodes = {},
                  simulation = False):
-        self.backbone = backbone # backbone sequence
-        self.gene_vars = gene_vars
-        self.exons = exons
-        self.primary_exons = primary_exons
-        self.partial_allele_ids = partial_allele_ids
-        self.true_allele_nodes = true_allele_nodes
+        self.backbone               = backbone # backbone sequence
+        self.gene_vars              = gene_vars
+        self.exons                  = exons
+        self.primary_exons          = primary_exons
+        self.partial_allele_ids     = partial_allele_ids
+        self.true_allele_nodes      = true_allele_nodes
         self.predicted_allele_nodes = predicted_allele_nodes
-        self.allele_node_order = []
-        self.display_allele_nodes = display_allele_nodes
-        self.simulation = simulation
+        self.allele_node_order      = []
+        self.display_allele_nodes   = display_allele_nodes
+        self.simulation             = simulation
 
         self.read_nodes = self.nodes = {}
-        self.other_nodes = {}
-        self.edges = {}
-        self.to_node, self.from_node = {}, {}
+        self.nodes2                  = None
+        self.other_nodes             = {}
+        self.edges                   = {}
+        self.to_node                 = {}
+        self.from_node               = {}
 
-        self.left_margin = 350
-        self.right_margin = 20
-        self.top_margin = 20
-        self.bottom_margin = 20
+        self.left_margin        = 350
+        self.right_margin       = 20
+        self.top_margin         = 20
+        self.bottom_margin      = 20
 
-        self.scalex, self.scaley = 5, 2
-        self.width = len(self.backbone) * self.scalex + self.left_margin + self.right_margin
-        self.unscaled_height = 6000
-        self.height = self.unscaled_height * self.scaley
-        self.coverage = {}
+        self.scalex             = 5
+        self.scaley             = 2
+        self.width              = len(self.backbone) \
+                                    * self.scalex \
+                                    + self.left_margin \
+                                    + self.right_margin
+        self.unscaled_height    = 6000
+        self.height             = self.unscaled_height \
+                                    * self.scaley
+        self.coverage               = {}
 
 
     # Add node, which is an alignment w.r.t. the reference
@@ -525,7 +534,7 @@ class Graph:
             
         if id_i == 0:
             if id in self.nodes:
-                print >> sys.stderr, "Warning) multi-mapped read:", id
+                print("Warning multi-mapped read: %s" % id, file=sys.stderr)
                 # assert False
                 return
             assert id not in self.nodes
@@ -558,12 +567,6 @@ class Graph:
                 if left <= left2 and right2 <= right:
                     at, overlap, mm = node.overlap_with(node2, self.gene_vars)
 
-                    # DK - debugging purposes
-                    """
-                    print node.id, "vs.", node2.id
-                    print "at %d: overlap of %d with %d mismatches (mult: %.2f)" % \
-                        (at, overlap, mm, mult)
-                    """
                     if mm < 1.0:
                         mult = overlap / float(max(right - left, right2 - left2))
                         if node2.get_avg_cov() * mult * 10 < node.get_avg_cov():
@@ -579,8 +582,7 @@ class Graph:
 
         for delete_id in delete_ids:
             del nodes[delete_id]
-
-            
+       
     #
     # 
     def guided_DeBruijn(self,
@@ -789,8 +791,8 @@ class Graph:
 
                 debug_msg = False
                 if debug_msg:
-                    print >> sys.stderr, "at", pos, vertices
-                    print >> sys.stderr, "count:", vertice_count
+                    print(("at", pos, vertices), file=sys.stderr)
+                    print(("count:", vertice_count), file=sys.stderr)
 
                 if try_hard:
                     vertice_with_id = [[vertice_count[v], v] for v in range(len(vertice_count))]
@@ -800,7 +802,7 @@ class Graph:
                         num_ids = vertices[v][3]
                         delete_ids |= set(num_ids)
                         if debug_msg:
-                            print >> sys.stderr, v, "is removed with", num_ids
+                            print((v, "is removed with", num_ids), file=sys.stderr)
                 else:
                     if first_pair:
                         v, v2, multi_read_ids = first_pair
@@ -850,7 +852,7 @@ class Graph:
                                         num_ids = vertices[v][3]
                                         delete_ids |= set(num_ids)
                                         if debug_msg:
-                                            print >> sys.stderr, v, "is removed with", num_ids
+                                            print((v, "is removed with", num_ids), file=sys.stderr)
                                     elif vertice_count[v] * 8 < avg_kmers:
                                         num_ids = vertices[v][3]
                                         delete_ids |= set(num_ids)
@@ -862,11 +864,10 @@ class Graph:
                                     num_ids = vertices[v][3]
                                     delete_ids |= set(num_ids)
                                     if debug_msg:
-                                        print >> sys.stderr, v, "is removed with", num_ids
+                                        print((v, "is removed with", num_ids), file=sys.stderr)
 
                 if debug_msg:
-                    print >> sys.stderr
-                    print >> sys.stderr           
+                    print("\n\n", file=sys.stderr)      
                 
             # delete nodes based on delete_ids
             ids_to_be_updated = set()
@@ -926,7 +927,7 @@ class Graph:
                         else:
                             consensus_seq[j][nt] += 1
 
-                print >> sys.stderr, i
+                print(i, file=sys.stderr)
                 for v in range(len(curr_vertices)):
                     nt, k_m1_mer, predecessors, num_ids = curr_vertices[v]
                     kmer = k_m1_mer + nt
@@ -939,7 +940,7 @@ class Graph:
                         if len(consensus_seq[j]) >= 2:
                             kmer_seq += "\033[00m"
                         
-                    print >> sys.stderr, "\t%d:" % v, kmer_seq, len(num_ids), predecessors, num_ids
+                    print(("\t%d:" % v, kmer_seq, len(num_ids), predecessors, num_ids), file=sys.stderr)
 
         id_to_num = {} # Regenerate new ID_to_num
         for num in range(len(num_to_id)):
@@ -1037,7 +1038,7 @@ class Graph:
         paths = sorted(paths, cmp=path_cmp)
 
         for p in range(len(paths)):
-            if print_msg: print >> sys.stderr, "path:", p, paths[p]
+            if print_msg: print(("path:", p, paths[p]), file=sys.stderr)
 
         # Build list of equivalent nodes
         excl_num_ids = set() # exclusive num ids
@@ -1084,9 +1085,9 @@ class Graph:
                     classes = equiv_list[i]
                     for j in range(len(classes)):
                         ids, num_ids, all_ids, alleles = classes[j]
-                        print >> sys.stderr, i, j, ids, len(num_ids), sorted(list(num_ids))[:20], alleles
+                        print((i, j, ids, len(num_ids), sorted(list(num_ids))[:20], alleles), file=sys.stderr)
 
-                    print >> sys.stderr
+                    print("\n", file=sys.stderr)
 
             # Collapse nodes to reference (annotation)
             def annotate_contig(viterbi = False):
@@ -1136,8 +1137,6 @@ class Graph:
                                 # The add the comparison to a trellis graph
                                 assert mx
 
-                                #print mx
-
                                 if len(mx) > 1:
                                     state = [[0,1],[1,0]]
                                     mx[1] = mx[1][::-1]
@@ -1148,14 +1147,11 @@ class Graph:
                                 states.append(state)
                                 trellis.append(mx)
 
-                            #print trellis
-                            #print states
-
                             score, path = viterbi_path(trellis, states)
                             vitres['path'].append(path)
                             vitres['value'].append(score)
 
-                    print vitres
+                    print(vitres)
 
                     ix = max(range(len(vitres['value'])), key=vitres['value'].__getitem__)
                     best_alleles, best_path, best_score = vitres['key'][ix], vitres['path'][ix], vitres['value'][ix]
@@ -1178,7 +1174,7 @@ class Graph:
                             node_id = "(%d-%d)%s" % (i, j, num_to_id[num_ids[0]])
                             node = self.nodes2[node_id]
                             node_vars = node.get_var_ids()
-                            max_alleles, max_common = set(), -sys.maxint
+                            max_alleles, max_common = set(), -sys.maxsize
                             for anode in self.predicted_allele_nodes.values():
                                 allele_vars = anode.get_var_ids(node.left, node.right)
                                 tmp_common = len(set(node_vars) & set(allele_vars)) - len(set(node_vars) | set(allele_vars))
@@ -1193,7 +1189,7 @@ class Graph:
                 v_coloring = annotate_contig(True) # Use Viturbi coloring
 
             # Identify identical stretches of nodes to merge
-            best_common_mat, best_stat, best_i, best_i2 = [], -sys.maxint, -1, -1
+            best_common_mat, best_stat, best_i, best_i2 = [], -sys.maxsize, -1, -1
             for i in range(len(equiv_list) - 1):
                 classes = equiv_list[i]
                 for i2 in range(i + 1, len(equiv_list)):
@@ -1229,9 +1225,8 @@ class Graph:
                         best_common_mat, best_stat, best_i, best_i2 = common_mat, common_stat, i, i2
 
             if print_msg:
-                print >> sys.stderr, "best:", best_i, best_i2, best_stat, best_common_mat
-                print >> sys.stderr
-                print >> sys.stderr
+                print(("best:", best_i, best_i2, best_stat, best_common_mat), file=sys.stderr)
+                print("\n\n", file=sys.stderr)
 
             if known_alleles and best_stat < 0:
                 self.remove_nodes(self.nodes2)
@@ -1247,7 +1242,7 @@ class Graph:
                         ids, num_ids, all_ids, alleles = classes[j]
                         num_ids = sorted(list(num_ids))
 
-                        if print_msg: print >> sys.stderr, i, j, num_ids
+                        if print_msg: print((i, j, num_ids), file=sys.stderr)
 
                         assert (num_ids) > 0
                         read_id = num_to_id[num_ids[0]]
@@ -1449,8 +1444,8 @@ class Graph:
 
     # Display graph information
     def print_info(self): 
-        print >> sys.stderr, "Backbone len: %d" % len(self.backbone)
-        print >> sys.stderr, "\t%s" % self.backbone   
+        print("Backbone len: %d" % len(self.backbone), file=sys.stderr)
+        print("\t%s" % self.backbone, file=sys.stderr)   
 
 
     # Compare nodes and get information
@@ -1543,9 +1538,9 @@ class Graph:
             if len(cur_seqs) <= 0:
                 continue
                 
-            print >> sys.stderr, p
+            print(p, file=sys.stderr)
             for seq, id in cur_seqs:
-                print >> sys.stderr, "\t", seq, id
+                print(("\t", seq, id), file=sys.stderr)
 
                 
     # Calculate coverage
@@ -1567,7 +1562,7 @@ class Graph:
             for node, left, right in nodes2:
                 node_vars = node.get_vars()
                 node_var_ids = node.get_var_ids()
-                max_common = -sys.maxint
+                max_common = -sys.maxsize
                 max_allele_node_ids = []
                 for allele_node_id, allele_left, allele_right in allele_nodes:
                     if right - left <= 500 and (left < allele_left or right > allele_right):
@@ -1604,7 +1599,7 @@ class Graph:
     # Begin drawing graph
     def begin_draw(self, fname_base):
         pdfDraw = self.pdfDraw = open(fname_base + '.pdf', 'w')
-        print >> pdfDraw, r'%PDF-1.7'
+        print(r'%PDF-1.7', file=pdfDraw)
         self.objects, self.stream = [], []
         self.draw_items = []
         
@@ -1696,28 +1691,25 @@ class Graph:
 
         # Write xref and trailer
         to_xref = pdfDraw.tell()
-        print >> pdfDraw, 'xref'
-        print >> pdfDraw, "0 %d" % (len(self.objects) + 1)
-        print >> pdfDraw, r'0000000000 65535 f'
+        print('xref', file=pdfDraw)
+        print("0 %d" % (len(self.objects) + 1), file=pdfDraw)
+        print(r'0000000000 65535 f', file=pdfDraw)
         for object in self.objects:
-            print >> pdfDraw, "%s 00000 n" % "{:010}".format(object)
-        print >> pdfDraw, 'trailer <</Size %d /Root 1 0 R>>' % (len(self.objects) + 1)
-        print >> pdfDraw, 'startxref'
-        print >> pdfDraw, str(to_xref)
-        print >> pdfDraw, r'%%EOF'
+            print("%s 00000 n" % "{:010}".format(object), file=pdfDraw)
+        print('trailer <</Size %d /Root 1 0 R>>' % (len(self.objects) + 1), file=pdfDraw)
+        print('startxref', file=pdfDraw)
+        print(str(to_xref), file=pdfDraw)
+        print(r'%%EOF', file=pdfDraw)
         
         self.pdfDraw.close()
 
-        
     def add_pdf_object(self, obj):
         self.objects.append(self.pdfDraw.tell())
-        print >> self.pdfDraw, "%d 0 obj %s" % (len(self.objects), obj)
-        print >> self.pdfDraw, 'endobj'
-
+        print("%d 0 obj %s" % (len(self.objects), obj), file=self.pdfDraw)
+        print('endobj', file=self.pdfDraw)
 
     def add_pdf_stream(self, stream):
         self.add_pdf_object("<</Length %d>>\nstream\n%s\nendstream" % (len(stream), stream))
-
         
     # Draw graph
     #   Top left as (0, 0) and Bottom right as (width, height)
@@ -1847,7 +1839,6 @@ class Graph:
                                             {"coord" : [p, y + 13, 1, cov],
                                              "fill" : allele_node_color}])
 
-
             for n_ in range(len(allele_nodes)):
                 n = -1
                 prob = ""
@@ -1966,7 +1957,7 @@ class Graph:
                     color = "0.85 0.85 0.85"
                 elif len(allele_nodes) > 0:
                     color = "1 1 1"
-                    max_common = -sys.maxint
+                    max_common = -sys.maxsize
                     for a in range(len(allele_nodes)):
                         allele_node_id, allele_left, allele_right = allele_nodes[a]
                         if right - left <= 500 and (left < allele_left or right > allele_right):

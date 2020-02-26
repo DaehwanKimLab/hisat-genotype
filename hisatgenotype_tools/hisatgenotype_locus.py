@@ -67,7 +67,7 @@ if __name__ == '__main__':
         locus_list = only_locus_list = args.only_locus_list.split(',')
 
     if args.aligner == "":
-        print >> sys.stderr, "Error: --aligners must be non-empty."
+        print("Error: --aligners must be non-empty.", file=sys.stderr)
         sys.exit(1)
     
     if ',' not in args.aligner and '.' not in args.aligner:
@@ -83,14 +83,14 @@ if __name__ == '__main__':
         args.read_fname = [args.read_fname_U]
     elif args.read_fname_1 != "" or args.read_fname_2 != "":
         if args.read_fname_1 == "" or args.read_fname_2 == "":
-            print >> sys.stderr, "Error: please specify both -1 and -2."
+            print("Error: please specify both -1 and -2.", file=sys.stderr)
             sys.exit(1)
         args.read_fname = [args.read_fname_1, args.read_fname_2]
     else:
         args.read_fname = []
     if args.alignment_fname != "" and \
             not os.path.exists(args.alignment_fname):
-        print >> sys.stderr, "Error: %s doesn't exist." % args.alignment_fname
+        print("Error: %s doesn't exist." % args.alignment_fname, file=sys.stderr)
         sys.exit(1)
 
     if args.verbose and args.verbose_level == 0:
@@ -109,16 +109,16 @@ if __name__ == '__main__':
                 debug[item] = 1
         for item in debug:
             if item not in debug_opts:
-                print >> sys.stderr, "Warning: %s not valid option for debug" % item
+                print("Warning: %s not valid option for debug" % item, file=sys.stderr)
                 exit(1)
             else:
                 continue
 
     if not args.partial:
-        print >> sys.stderr, "Warning: --no-partial should be used for debugging purpose only."
+        print("Warning: --no-partial should be used for debugging purpose only.", file=sys.stderr)
 
     if args.read_len * 2 > args.fragment_len:
-        print >> sys.stderr, "Warning: fragment might be too short (%d)" % (args.fragment_len)
+        print("Warning: fragment might be too short (%d)" % (args.fragment_len), file=sys.stderr)
 
     skip_fragment_regions = []
     if args.skip_fragment_regions != "":
@@ -140,7 +140,7 @@ if __name__ == '__main__':
         args.out_dir = os.getcwd()
     else:
         if not os.path.exists(args.out_dir):
-            print >> sys.stderr, "Out directory doesn't exist"
+            print("Out directory doesn't exist", file=sys.stderr)
         exit(1)
 
     random.seed(args.random_seed)

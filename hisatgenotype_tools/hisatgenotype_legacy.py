@@ -57,9 +57,9 @@ def align_reads(base_fname,
 
     out_base_fname = read_fnames[0].split('/')[-1].split('.')[0]
 
-    print >> sys.stderr, "%s Aligning %s to %s ..." % (str(datetime.now()), ' '.join(read_fnames), base_fname)
+    print("%s Aligning %s to %s ..." % (str(datetime.now()), ' '.join(read_fnames), base_fname), file=sys.stderr)
     if verbose:
-        print >> sys.stderr, "\t%s" % (' '.join(aligner_cmd))
+        print("\t%s" % (' '.join(aligner_cmd)), file=sys.stderr)
 
     align_proc = subprocess.Popen(aligner_cmd,
                                   stdout=subprocess.PIPE,
@@ -78,7 +78,7 @@ def align_reads(base_fname,
     # Increase the maximum number of files that can be opened
     resource.setrlimit(resource.RLIMIT_NOFILE, (10000, 10240))
     
-    print >> sys.stderr, "%s Sorting %s ..." % (str(datetime.now()), unsorted_bam_fname)
+    print("%s Sorting %s ..." % (str(datetime.now()), unsorted_bam_fname), file=sys.stderr)
     bam_fname = "%s.bam" % out_base_fname
     bamsort_cmd = ["samtools",
                    "sort",
@@ -87,7 +87,7 @@ def align_reads(base_fname,
                    unsorted_bam_fname,
                    "-o", bam_fname]    
     if verbose:
-        print >> sys.stderr, "\t%s" % ' '.join(bamsort_cmd)
+        print("\t%s" % ' '.join(bamsort_cmd), file=sys.stderr)
     bamsort_proc = subprocess.call(bamsort_cmd)
     os.remove(unsorted_bam_fname)
 
@@ -101,12 +101,12 @@ def align_reads(base_fname,
 """
 def index_bam(bam_fname,
               verbose):
-    print >> sys.stderr, "%s Indexing %s ..." % (str(datetime.now()), bam_fname)
+    print("%s Indexing %s ..." % (str(datetime.now()), bam_fname), file=sys.stderr)
     bamindex_cmd = ["samtools",
                     "index",
                     bam_fname]
     if verbose:
-        print >> sys.stderr, "\t%s" % ' '.join(bamindex_cmd)
+        print("\t%s" % ' '.join(bamindex_cmd), file=sys.stderr)
     bamindex_proc = subprocess.call(bamindex_cmd)
 
 
@@ -159,7 +159,7 @@ def extract_reads(bam_fname,
 
     bamview_cmd = ["samtools", "view", bam_fname, "%s:%d-%d" % (chr, left+1, right+1)]
     if verbose:
-        print >> sys.stderr, "\t%s" % ' '.join(bamview_cmd)
+        print("\t%s" % ' '.join(bamview_cmd), file=sys.stderr)
     bamview_proc = subprocess.Popen(bamview_cmd,
                                     stdout=subprocess.PIPE,
                                     stderr=open("/dev/null", 'w'))
@@ -270,7 +270,7 @@ def perform_genotyping(base_fname,
         genotype_cmd += '--debug' + debug
 
     if verbose:
-        print >> sys.stderr, "\t%s" % ' '.join(genotype_cmd)
+        print("\t%s" % ' '.join(genotype_cmd), file=sys.stderr)
     genotype_proc = subprocess.Popen(genotype_cmd)
     genotype_proc.communicate()
         
@@ -300,9 +300,9 @@ def genotype(base_fname,
     # hisat2 graph index files
     genotype_fnames += ["%s.%d.ht2" % (base_fname, i+1) for i in range(8)]
     if not typing_common.check_files(genotype_fnames):
-        print >> sys.stderr, "Error: some of the following files are missing!"
+        print("Error: some of the following files are missing!", file=sys.stderr)
         for fname in genotype_fnames:
-            print >> sys.stderr, "\t%s" % fname
+            print("\t%s" % fname, file=sys.stderr)
         sys.exit(1)
 
     # Read region alleles (names and sequences)
@@ -326,7 +326,7 @@ def genotype(base_fname,
         region_loci[family].append([locus_name, allele_name, chr, left, right])
 
     if len(region_loci) <= 0:
-        print >> sys.stderr, "Warning: no region exists!"
+        print("Warning: no region exists!", file=sys.stderr)
         sys.exit(1)
 
     # Align reads, and sort the alignments into a BAM file
@@ -344,12 +344,12 @@ def genotype(base_fname,
 
     # Extract reads and perform genotyping
     for family, loci in region_loci.items():
-        print >> sys.stderr, "Analyzing %s ..." % family.upper()
+        print("Analyzing %s ..." % family.upper(), file=sys.stderr)
         for locus_name, allele_name, chr, left, right in loci:
             out_read_fname = "%s.%s" % (family, locus_name)
             if verbose:
-                print >> sys.stderr, "\tExtracting reads beloning to %s-%s ..." % \
-                    (family, locus_name)
+                print("\tExtracting reads beloning to %s-%s ..." % \
+                    (family, locus_name), file=sys.stderr)
 
             extracted_read_fnames = extract_reads(alignment_fname,
                                                   chr,
@@ -371,7 +371,7 @@ def genotype(base_fname,
                                threads,
                                verbose,
                                debug)
-        print >> sys.stderr
+        print("\n", file=sys.stderr)
 
     
                 
@@ -448,7 +448,7 @@ if __name__ == '__main__':
         for region in args.region_list.split(','):
             region = region.split('.')
             if len(region) < 1 or len(region) > 2:
-                print >> sys.stderr, "Error: --region-list is incorrectly formatted."
+                print("Error: --region-list is incorrectly formatted.", file=sys.stderr)
                 sys.exit(1)
                 
             family = region[0].lower()
@@ -462,12 +462,12 @@ if __name__ == '__main__':
     read_fnames = []
     if args.alignment_fname != "":
         if not os.path.exists(args.alignment_fname):
-            print >> sys.stderr, "Error: %s does not exist." % args.alignment_fname
+            print("Error: %s does not exist." % args.alignment_fname, file=sys.stderr)
     elif args.read_fname_U != "":
         read_fnames = [args.read_fname_U]
     else:
         if args.read_fname_1 == "" or args.read_fname_2 == "":
-            print >> sys.stderr, "Error: please specify read file names correctly: -U or -1 and -2"
+            print("Error: please specify read file names correctly: -U or -1 and -2", file=sys.stderr)
             sys.exit(1)
         read_fnames = [args.read_fname_1, args.read_fname_2]
 

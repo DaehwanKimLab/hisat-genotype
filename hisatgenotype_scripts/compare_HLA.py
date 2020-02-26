@@ -9,7 +9,7 @@ def compare(hisatgenotype_fname,
             utsw_fname):
     hla_list = ["A", "B", "C", "DQA1", "DQB1", "DRB1"]
     for level in [1,2]:
-        print >> sys.stderr, "Level: %d" % level
+        print("Level: %d" % level, file=sys.stderr)
         def read_hla_types(fname):
             hla, hla_orig = {}, {}
             for line in open(fname):
@@ -69,7 +69,7 @@ def compare(hisatgenotype_fname,
 
         for gene in hla_list:
             count, count_10 = [0, 0, 0], [0, 0, 0]
-            print >> sys.stderr, "\t%s" % gene
+            print("\t%s" % gene, file=sys.stderr)
             for sample in hla2.keys():
                 if sample not in hla1:
                     continue
@@ -107,15 +107,15 @@ def compare(hisatgenotype_fname,
                 # """
                 # if gene in ["A", "B", "C", "DQA1", "DQB1", "DRB1"] and num_match < 2:
                 if level == 3 and gene in ["B"] and num_match < 2:
-                    print sample
-                    print "\t", hla1_gene, "orig:", hla1_orig[sample][gene]
-                    print "\t", hla2_gene, "orig:", hla2_orig[sample][gene]
+                    print(sample)
+                    print("\t", hla1_gene, "orig:", hla1_orig[sample][gene])
+                    print("\t", hla2_gene, "orig:", hla2_orig[sample][gene])
                     # sys.exit(1)
                 # """
 
                 # DK - debugging purposes
                 if num_match >= len(count) or num_match_10 >= len(count_10):
-                    print sample, num_match, num_match_10
+                    print(sample, num_match, num_match_10)
 
                 assert num_match < len(count) and num_match_10 < len(count_10)
                 count[num_match] += 1
@@ -124,8 +124,8 @@ def compare(hisatgenotype_fname,
             if sum(count) <= 0:
                 continue
 
-            print >> sys.stderr, "\t\tTop two\t0: %d, 1: %d, 2: %d (%.2f%%)" % (count[0], count[1], count[2], (count[1] + count[2] * 2) / float(sum(count) * 2) * 100.0)
-            print >> sys.stderr, "\t\tTop ten\t0: %d, 1: %d, 2: %d (%.2f%%)" % (count_10[0], count_10[1], count_10[2], (count_10[1] + count_10[2] * 2) / float(sum(count_10) * 2) * 100.0)
+            print("\t\tTop two\t0: %d, 1: %d, 2: %d (%.2f%%)" % (count[0], count[1], count[2], (count[1] + count[2] * 2) / float(sum(count) * 2) * 100.0))
+            print("\t\tTop ten\t0: %d, 1: %d, 2: %d (%.2f%%)" % (count_10[0], count_10[1], count_10[2], (count_10[1] + count_10[2] * 2) / float(sum(count_10) * 2) * 100.0))
 
 
 if __name__ == "__main__":

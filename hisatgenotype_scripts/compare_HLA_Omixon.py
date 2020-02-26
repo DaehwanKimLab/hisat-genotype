@@ -52,7 +52,7 @@ def compare(hisatgenotype_fname, omixon_fname):
 
     for gene in hla_list:
         count, count_10 = [0, 0, 0], [0, 0, 0]
-        print >> sys.stderr, gene
+        print(gene, file=sys.stderr)
         for sample in omixon_hla.keys():
             if sample not in hisat_hla:
                 continue
@@ -106,8 +106,8 @@ def compare(hisatgenotype_fname, omixon_fname):
         if sum(count) <= 0:
             continue
         
-        print >> sys.stderr, "\tTop two\t0: %d, 1: %d, 2: %d (%.2f%%)" % (count[0], count[1], count[2], (count[1] + count[2] * 2) / float(sum(count) * 2) * 100.0)
-        print >> sys.stderr, "\tTop ten\t0: %d, 1: %d, 2: %d (%.2f%%)" % (count_10[0], count_10[1], count_10[2], (count_10[1] + count_10[2] * 2) / float(sum(count_10) * 2) * 100.0)
+        print("\tTop two\t0: %d, 1: %d, 2: %d (%.2f%%)" % (count[0], count[1], count[2], (count[1] + count[2] * 2) / float(sum(count) * 2) * 100.0))
+        print("\tTop ten\t0: %d, 1: %d, 2: %d (%.2f%%)" % (count_10[0], count_10[1], count_10[2], (count_10[1] + count_10[2] * 2) / float(sum(count_10) * 2) * 100.0))
         
 
 if __name__ == "__main__":

@@ -125,7 +125,7 @@ def worker(lock,
     if not os.path.exists(read_fname_1) or not os.path.exists(read_fname_2):
         return
     lock.acquire()
-    print >> sys.stderr, genome
+    print(genome, file=sys.stderr)
     lock.release()
 
     for family, loci in region_list.items():
@@ -145,7 +145,7 @@ def worker(lock,
 
         if verbose:
             lock.acquire()
-            print >> sys.stderr, ' '.join(test_hla_cmd)
+            print(' '.join(test_hla_cmd), file=sys.stderr)
             lock.release()
 
         proc = subprocess.Popen(test_hla_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -161,7 +161,7 @@ def worker(lock,
 
     lock.acquire()
     for allele, abundance in output_list:
-        print >> sys.stdout, "%s\t%s\t%.2f" % (genome, allele, abundance)
+        print("%s\t%s\t%.2f" % (genome, allele, abundance))
         genotype_results.append([genome, allele, abundance])
     sys.stdout.flush()
     lock.release()
@@ -191,7 +191,7 @@ def genotyping(read_dir,
                                                 verbose)
     
     if not os.path.exists(read_dir):
-        print >> sys.stderr, "Error: %s does not exist." % read_dir
+        print("Error: %s does not exist." % read_dir, file=sys.stderr)
         sys.exit(1)
 
     if out_dir != "" and not os.path.exists(out_dir):
@@ -238,7 +238,7 @@ def genotyping(read_dir,
             genotype_dic[region][genome].append([allele, abundance])
 
         for region, region_genotype in genotype_dic.items():
-            print >> sys.stderr, region
+            print(region, file=sys.stderr)
             included, total = 0, 0
             for genome, genome_alleles in region_genotype.items():
                 genome_alleles = set([allele for allele, _ in genome_alleles])
@@ -255,12 +255,12 @@ def genotyping(read_dir,
                     for parent_allele, _ in region_genotype[parents[0]]:
                         for parent_allele2, _ in region_genotype[parents[1]]:
                             parent_allele_sets.append(set([parent_allele, parent_allele2]))
-                print >> sys.stderr, "\t", genome, genome_alleles, parent_allele_sets
+                print(("\t", genome, genome_alleles, parent_allele_sets), file=sys.stderr)
                 if len(parent_allele_sets) > 0:
                     total += 1
                     if genome_alleles in parent_allele_sets:
                         included += 1
-            print >> sys.stderr, "\t%d / %d" % (included, total)
+            print("\t%d / %d" % (included, total), file=sys.stderr)
 
 """
 """
@@ -279,11 +279,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.read_dir == "":
-        print >> sys.stderr, "Error: please specify --read-dir."
+        print("Error: please specify --read-dir.", file=sys.stderr)
         sys.exit(1)
 
     if not args.reference_type in ["gene", "chromosome", "genome"]:
-        print >> sys.stderr, "Error: --reference-type (%s) must be one of gene, chromosome, and genome." % (args.reference_type)
+        print("Error: --reference-type (%s) must be one of gene, chromosome, and genome." % (args.reference_type), file=sys.stderr)
         sys.exit(1)
 
     region_list = {}
@@ -291,7 +291,7 @@ if __name__ == '__main__':
         for region in args.region_list.split(','):
             region = region.split('.')
             if len(region) < 1 or len(region) > 2:
-                print >> sys.stderr, "Error: --region-list is incorrectly formatted."
+                print("Error: --region-list is incorrectly formatted.", file=sys.stderr)
                 sys.exit(1)
                 
             family = region[0].lower()
@@ -305,7 +305,7 @@ if __name__ == '__main__':
         args.base_fname = args.base_fname.split(',')
         args.locus_list = args.locus_list.split(';')
         if len(args.base_fname) != len(args.locus_list):
-            print >> sys.stderr, "Error: --base and --locus-list not correct"
+            print("Error: --base and --locus-list not correct", file=sys.stderr)
         for itr in range(len(args.base_fname.split)):
             family = args.base_fname[itr]
             loci_names = args.locus_list[itr].split(',')

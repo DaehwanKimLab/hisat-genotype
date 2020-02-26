@@ -122,7 +122,7 @@ def download_codis(base_dname,
                 l += 1
 
         for allele_id, repeat_st in alleles:
-            print >> codis_data_file, "%s\t%s\t%s" % (locus_name, allele_id, repeat_st)
+            print("%s\t%s\t%s" % (locus_name, allele_id, repeat_st), file=codis_data_file)
 
     codis_data_file.close()
 

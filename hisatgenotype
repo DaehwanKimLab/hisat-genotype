@@ -50,12 +50,12 @@ l = multiprocessing.Lock()
 """
 def index_bam(bam_fname,
               verbose):
-    print >> sys.stderr, "%s Indexing %s ..." % (str(datetime.now()), bam_fname)
+    print("%s Indexing %s ..." % (str(datetime.now()), bam_fname), file=sys.stderr)
     bamindex_cmd = ["samtools",
                     "index",
                     bam_fname]
     if verbose:
-        print >> sys.stderr, "\t%s" % ' '.join(bamindex_cmd)
+        print("\t%s" % ' '.join(bamindex_cmd), file=sys.stderr)
     bamindex_proc = subprocess.call(bamindex_cmd)
 
 def check_base(base_fname, aligner):
@@ -177,7 +177,7 @@ def reads_from_bam(bam_fname,
 
     bamview_cmd = ["samtools", "view", bam_fname, "%s:%d-%d" % (chr, left+1, right+1)]
     if verbose:
-        print >> sys.stderr, "\t%s" % ' '.join(bamview_cmd)
+        print("\t%s" % ' '.join(bamview_cmd), file=sys.stderr)
     bamview_proc = subprocess.Popen(bamview_cmd,
                                     stdout=subprocess.PIPE,
                                     stderr=open("/dev/null", 'w'))
@@ -261,7 +261,7 @@ def extract_bam(file_lists,
                 verbose):
     # variants, backbone sequence, and other sequeces
     if not check_base(base, aligner):
-        print >> sys.stderr, "Error: some of the base files are missing!"
+        print("Error: some of the base files are missing!", file=sys.stderr)
         sys.exit(1)
 
     # Read locus alleles (names and sequences)
@@ -285,7 +285,7 @@ def extract_bam(file_lists,
         region_loci[family].append([locus_name, allele_name, chr, left, right])
 
     if len(region_loci) <= 0:
-        print >> sys.stderr, "Warning: no loci exists!"
+        print("Warning: no loci exists!", file=sys.stderr)
         sys.exit(1)
 
     # Sort the BAM file
@@ -300,8 +300,8 @@ def extract_bam(file_lists,
         for locus_name, allele_name, chr, left, right in loci:
             out_read_fname = "%s.%s" % (family, locus_name)
             if verbose:
-                print >> sys.stderr, "\tExtracting reads beloning to %s-%s ..." % \
-                    (family, locus_name)
+                print("\tExtracting reads beloning to %s-%s ..." % \
+                    (family, locus_name), file=sys.stderr)
 
             extracted_read_fnames = reads_from_bam(alignment_fname,
                                                    out_dir,
@@ -319,81 +319,10 @@ def extract_bam(file_lists,
         file_lists[family].append(out_read_fname)
         lock.release() 
 
-        print >> sys.stderr
-    
-"""
-"""
-if __name__ == '__main__':
-    version_dir = '/'.join(os.path.realpath(__file__).split('/')[:-1])
-    try:
-        h2_v = open(version_dir + "/hisat2/VERSION", "r").read().strip()
-        hg_v = open(version_dir + "/VERSION", "r").read().strip()
-        version_info = [h2_v, hg_v]
-    except:
-        version_info = ['', '']
+        print("\n", file=sys.stderr)
 
-    parser = ArgumentParser(
-        description='HISAT-Genotype %s (Built on HISAT2 %s)' % (version_info[1], version_info[0]),
-        epilog='See --advanced-help for further options available')
 
-    arguments.args_databases(parser,
-                             genome=True) # Add option to change genome name
-    arguments.args_aligner_inputs(parser,
-                                  keep=True) # Add option to keep alignments
-
-    arguments.args_input_output(parser)                              
-    arguments.args_bamfile(parser)
-
-    parser.add_argument('--pass-extract',
-                        dest='already_extract',
-                        action='store_true',
-                        help='Skip read extraction if the read files input are already extracted by --base'
-                        )
-
-    arguments.args_single_end(parser)
-    arguments.args_assembly(parser)
-    arguments.args_common(parser)
-
-    ### Advanced parser information
-    parser_advanced = ArgumentParser(
-        description='Advanced Options',
-        add_help=False)
-    parser_advanced.add_argument('--advanced-help',
-                                 action='help',
-                                 help='Show Advanced Options')
-    parser_advanced.add_argument('--keep-extract',
-                                 dest='keep_extract',
-                                 action='store_true',
-                                 help='Keep extracted fastq read files'
-                                 )
-    parser_advanced.add_argument('--build-base',
-                                 dest='build_index',
-                                 action='store_true',
-                                 help='Build the indexes listed in --base-fname'
-                                 )
-
-    arguments.args_set_aligner(parser_advanced)
-    arguments.args_var_gaps(parser_advanced)
-    arguments.args_extract_vars(parser_advanced)
-    arguments.args_extract_reads(parser_advanced)
-    arguments.args_no_partial(parser_advanced)
-    arguments.args_locus(parser_advanced)
-    parser_advanced.add_argument("--debug",
-                                 dest="debug",
-                                 type=str,
-                                 default="",
-                                 help="Test database or code (options: basic, pair, full, single-end, test_list, test_id)(e.g., test_id:10,basic)"
-                                 )
-
-    ## Setup arguments into a new namespace for parsing
-    arg_dict, unknown = {}, []
-    args2, unused = parser_advanced.parse_known_args()
-    args1 = parser.parse_args(unused)
-    arg_dict.update(vars(args1))
-    arg_dict.update(vars(args2))
-
-    args = Namespace(**arg_dict)
-
+def typing_process(args):
     """ 
     Arg parsing and system state set-up ##################################
     """ 
@@ -403,7 +332,7 @@ if __name__ == '__main__':
     args.locus_list = args.locus_list.upper().split(';') if args.locus_list != "" else []
 
     if (len(args.base_fname) != len(args.locus_list)) and args.locus_list:
-        print >> sys.stderr, "Error: --base and --locus-list not correct format (ex. --base hla,rbg --locus-list A,B,C;ABO,RHD)"
+        print("Error: --base and --locus-list not correct format (ex. --base hla,rbg --locus-list A,B,C;ABO,RHD)", file=sys.stderr)
         exit(1)
 
     for itr in range(len(args.base_fname)):
@@ -418,7 +347,7 @@ if __name__ == '__main__':
     
     # Confirm correct aligner and set block_size
     if args.aligner not in ["hisat2", "bowtie2"]:
-        print >> sys.stderr, "Error: --aligner should be either hisat2 or bowtie2."
+        print("Error: --aligner should be either hisat2 or bowtie2.", file=sys.stderr)
         sys.exit(1)        
     block_size = 20000000 if args.extract_whole else 0
 
@@ -446,17 +375,17 @@ if __name__ == '__main__':
                 debug[item] = 1
         for item in debug:
             if item not in debug_opts:
-                print >> sys.stderr, "Warning: %s not valid option for debug" % item
+                print("Warning: %s not valid option for debug" % item, file=sys.stderr)
                 exit(1)
             else:
                 continue
 
     # Advanced setting alerts for users
     if not args.partial:
-        print >> sys.stderr, "Warning: --no-partial should be used for debugging purpose only."
+        print("Warning: --no-partial should be used for debugging purpose only.", file=sys.stderr)
 
     if args.read_len * 2 > args.fragment_len:
-        print >> sys.stderr, "Warning: fragment might be too short (%d)" % (args.fragment_len)
+        print("Warning: fragment might be too short (%d)" % (args.fragment_len), file=sys.stderr)
 
     skip_fragment_regions = []
     if args.skip_fragment_regions != "":
@@ -502,7 +431,7 @@ if __name__ == '__main__':
             single_run = True
         elif args.read_fname_1 != "" or args.read_fname_2 != "":
             if args.read_fname_1 == "" or args.read_fname_2 == "":
-                print >> sys.stderr, "Error: please specify both -1 and -2."
+                print("Error: please specify both -1 and -2.", file=sys.stderr)
                 sys.exit(1)
             read_fnames = ['%s%s' % (args.read_dir, args.read_fname_1), 
                            '%s%s' % (args.read_dir, args.read_fname_2)]
@@ -512,7 +441,7 @@ if __name__ == '__main__':
             is_bam = True
         else:
             if args.read_dir == '' or not os.path.exists(args.read_dir):
-                print >> sys.stderr, "Error: please specify read file names correctly: -U or -1 and -2 or --bamfile or --read-dir"
+                print("Error: please specify read file names correctly: -U or -1 and -2 or --bamfile or --read-dir", file=sys.stderr)
                 sys.exit(1)
             alignment_fnames = glob.glob("./%s/*.bam" % (args.read_dir))
             is_bam = True if alignment_fnames else False
@@ -523,7 +452,7 @@ if __name__ == '__main__':
         else:
             paired = args.paired
             if (args.read_fname_1 != "" and args.read_fname_2 != "") and not paired:
-                print >> sys.stderr, "Error: Don't set --single-end when using -1 and -2 options."
+                print("Error: Don't set --single-end when using -1 and -2 options.", file=sys.stderr)
                 exit(1)
 
         if not args.already_extract:
@@ -601,7 +530,7 @@ if __name__ == '__main__':
     random.seed(args.random_seed)
     if not fq_fname_base:
         if args.debug == '':
-            print >> sys.stderr, "No --debug or -U -1 -2 --in-dir options set"
+            print("No --debug or -U -1 -2 --in-dir options set", file=sys.stderr)
             exit(1)
 
         for base, loci in region_list.items():
@@ -655,72 +584,40 @@ if __name__ == '__main__':
                     discard_list.add(fn)
 
                 locus_list = region_list[base] if "ALL" not in region_list else []
-                # log[entry] = pool.apply_async(genotyping_locus,
-                #                 args = (base,
-                #                      locus_list,
-                #                      args.genotype_genome,
-                #                      only_locus_list,
-                #                      args.partial,
-                #                      args.aligner,
-                #                      fasta_fname,
-                #                      args.fastq,
-                #                      args.alignment_fname,
-                #                      args.threads_aprocess,
-                #                      args.simulate_interval,
-                #                      args.read_len,
-                #                      args.fragment_len,
-                #                      args.best_alleles,
-                #                      args.num_editdist,
-                #                      args.perbase_errorrate,
-                #                      args.perbase_snprate,
-                #                      skip_fragment_regions,
-                #                      args.assembly,
-                #                      args.output_base,
-                #                      args.error_correction,
-                #                      args.keep_alignment,
-                #                      args.discordant,
-                #                      args.type_primary_exons,
-                #                      args.remove_low_abundance_alleles,
-                #                      display_alleles,
-                #                      args.verbose_level,
-                #                      args.assembly_verbose,
-                #                      args.out_dir,
-                #                      debug))
-
-                genotyping_locus(base,
-                                locus_list,
-                                args.genotype_genome,
-                                only_locus_list,
-                                args.partial,
-                                args.aligner,
-                                fasta_fname,
-                                args.fastq,
-                                args.alignment_fname,
-                                args.threads_aprocess,
-                                args.simulate_interval,
-                                args.read_len,
-                                args.fragment_len,
-                                args.best_alleles,
-                                args.num_editdist,
-                                args.perbase_errorrate,
-                                args.perbase_snprate,
-                                skip_fragment_regions,
-                                args.assembly,
-                                args.output_base,
-                                args.error_correction,
-                                args.keep_alignment,
-                                args.discordant,
-                                args.type_primary_exons,
-                                args.remove_low_abundance_alleles,
-                                display_alleles,
-                                args.verbose_level,
-                                args.assembly_verbose,
-                                args.out_dir,
-                                debug)
-
+                log[entry] = pool.apply_async(genotyping_locus,
+                                args = (base,
+                                     locus_list,
+                                     args.genotype_genome,
+                                     only_locus_list,
+                                     args.partial,
+                                     args.aligner,
+                                     fasta_fname,
+                                     args.fastq,
+                                     args.alignment_fname,
+                                     args.threads_aprocess,
+                                     args.simulate_interval,
+                                     args.read_len,
+                                     args.fragment_len,
+                                     args.best_alleles,
+                                     args.num_editdist,
+                                     args.perbase_errorrate,
+                                     args.perbase_snprate,
+                                     skip_fragment_regions,
+                                     args.assembly,
+                                     args.output_base,
+                                     args.error_correction,
+                                     args.keep_alignment,
+                                     args.discordant,
+                                     args.type_primary_exons,
+                                     args.remove_low_abundance_alleles,
+                                     display_alleles,
+                                     args.verbose_level,
+                                     args.assembly_verbose,
+                                     args.out_dir,
+                                     debug))
 
         # Generate Log files for errors
-        # pool.close()
+        pool.close()
 
         runtime = str(date.today())
         ofnlog = open("%s_hisat-genotype.log" % (runtime), 'w')        
@@ -741,5 +638,79 @@ if __name__ == '__main__':
         for fname in discard_list:
             os.remove(fname)
 
+"""
+"""
+if __name__ == '__main__':
+    version_dir = '/'.join(os.path.realpath(__file__).split('/')[:-1])
+    try:
+        h2_v = open(version_dir + "/hisat2/VERSION", "r").read().strip()
+        hg_v = open(version_dir + "/VERSION", "r").read().strip()
+        version_info = [h2_v, hg_v]
+    except:
+        version_info = ['', '']
+
+    parser = ArgumentParser(
+        description='HISAT-Genotype %s (Built on HISAT2 %s)' % (version_info[1], version_info[0]),
+        epilog='See --advanced-help for further options available')
+
+    arguments.args_databases(parser,
+                             genome=True) # Add option to change genome name
+    arguments.args_aligner_inputs(parser,
+                                  keep=True) # Add option to keep alignments
+
+    arguments.args_input_output(parser)                              
+    arguments.args_bamfile(parser)
+
+    parser.add_argument('--pass-extract',
+                        dest='already_extract',
+                        action='store_true',
+                        help='Skip read extraction if the read files input are already extracted by --base'
+                        )
+
+    arguments.args_single_end(parser)
+    arguments.args_assembly(parser)
+    arguments.args_common(parser)
+
+    ### Advanced parser information
+    parser_advanced = ArgumentParser(
+        description='Advanced Options',
+        add_help=False)
+    parser_advanced.add_argument('--advanced-help',
+                                 action='help',
+                                 help='Show Advanced Options')
+    parser_advanced.add_argument('--keep-extract',
+                                 dest='keep_extract',
+                                 action='store_true',
+                                 help='Keep extracted fastq read files'
+                                 )
+    parser_advanced.add_argument('--build-base',
+                                 dest='build_index',
+                                 action='store_true',
+                                 help='Build the indexes listed in --base-fname'
+                                 )
+
+    arguments.args_set_aligner(parser_advanced)
+    arguments.args_var_gaps(parser_advanced)
+    arguments.args_extract_vars(parser_advanced)
+    arguments.args_extract_reads(parser_advanced)
+    arguments.args_no_partial(parser_advanced)
+    arguments.args_locus(parser_advanced)
+    parser_advanced.add_argument("--debug",
+                                 dest="debug",
+                                 type=str,
+                                 default="",
+                                 help="Test database or code (options: basic, pair, full, single-end, test_list, test_id)(e.g., test_id:10,basic)"
+                                 )
+
+    ## Setup arguments into a new namespace for parsing
+    arg_dict, unknown = {}, []
+    args2, unused = parser_advanced.parse_known_args()
+    args1 = parser.parse_args(unused)
+    arg_dict.update(vars(args1))
+    arg_dict.update(vars(args2))
+
+    args = Namespace(**arg_dict)
+
+    typing_process(args)
         
 

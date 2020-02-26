@@ -79,11 +79,11 @@ def build_genotype_genome(base_fname,
                             "--genotype-vcf", "clinvar.vcf.gz",
                             "genome.fa", "/dev/null", "clinvar"]
             if verbose:
-                print >> sys.stderr, "\tRunning:", ' '.join(extract_cmd)
+                print("\tRunning:", ' '.join(extract_cmd), file=sys.stderr)
             proc = subprocess.Popen(extract_cmd, stdout=open("/dev/null", 'w'), stderr=open("/dev/null", 'w'))
             proc.communicate()
             if not typing_common.check_files(CLINVAR_fnames):
-                print >> sys.stderr, "Error: extract variants from clinvar failed!"
+                print("Error: extract variants from clinvar failed!", file=sys.stderr)
                 sys.exit(1)
 
         # Read variants to be genotyped
@@ -111,11 +111,11 @@ def build_genotype_genome(base_fname,
                            "--intra-gap", str(intra_gap),
                            "genome.fa", "%s.txt" % commonvar_fbase, commonvar_fbase]
             if verbose:
-                print >> sys.stderr, "\tRunning:", ' '.join(extract_cmd)
+                print("\tRunning:", ' '.join(extract_cmd), file=sys.stderr)
             proc = subprocess.Popen(extract_cmd, stdout=open("/dev/null", 'w'), stderr=open("/dev/null", 'w'))
             proc.communicate()
             if not typing_common.check_files(commonvar_fnames):
-                print >> sys.stderr, "Error: extract variants from clinvar failed!"
+                print("Error: extract variants from clinvar failed!", file=sys.stderr)
                 sys.exit(1)
 
         # Read variants to be genotyped
@@ -200,13 +200,13 @@ def build_genotype_genome(base_fname,
                     continue
 
                 out_str = "%s\t%s\t%s\t%d\t%s" % (var_id, var_type, chr, var_left + off, var_data)
-                print >> var_out_file, out_str
-                print >> index_var_out_file, out_str
+                print(out_str, file=var_out_file)
+                print(out_str, file=index_var_out_file)
 
                 if var_id in genotype_clnsig:
                     var_gene, clnsig = genotype_clnsig[var_id]
-                    print >> clnsig_out_file, "%s\t%s\t%s" % \
-                        (var_id, var_gene, clnsig)
+                    print("%s\t%s\t%s" % \
+                        (var_id, var_gene, clnsig), file=clnsig_out_file)
                 
                 chr_genotype_vari += 1
 
@@ -219,8 +219,8 @@ def build_genotype_genome(base_fname,
                     chr_genotype_hti += 1
                     continue
 
-                print >> haplotype_out_file, "ht%d\t%s\t%d\t%d\t%s" % \
-                    (haplotype_num, chr, ht_left + off, ht_right + off, ','.join(ht_vars))
+                print("ht%d\t%s\t%d\t%d\t%s" % \
+                    (haplotype_num, chr, ht_left + off, ht_right + off, ','.join(ht_vars)), file=haplotype_out_file)
                 chr_genotype_hti += 1
                 haplotype_num += 1
 
@@ -235,8 +235,8 @@ def build_genotype_genome(base_fname,
 
             if not graph_index:
                 # Output gene (genotype_genome.gene)
-                print >> locus_out_file, "%s\t%s\t%s\t%d\t%d\t%s\t%s" % \
-                    (family.upper(), name, chr, left, right, exon_str, strand)
+                print("%s\t%s\t%s\t%d\t%d\t%s\t%s" % \
+                    (family.upper(), name, chr, left, right, exon_str, strand), file=locus_out_file)
                 continue            
 
             chr_genotype_vari, chr_genotype_hti, haplotype_num = add_vars(left, right, chr_genotype_vari, chr_genotype_hti, haplotype_num)
@@ -274,7 +274,7 @@ def build_genotype_genome(base_fname,
             assert left < chr_len and right < chr_len
             # Skipping overlapping genes
             if left < prev_right:
-                print >> sys.stderr, "Warning: skipping %s ..." % (name)
+                print("Warning: skipping %s ..." % (name), file=sys.stderr)
                 continue
 
             varID2htID = {}
@@ -287,12 +287,12 @@ def build_genotype_genome(base_fname,
                 out_chr_seq += chr_seq[prev_right:left]
 
             # Output gene (genotype_genome.locus)
-            print >> locus_out_file, "%s\t%s\t%s\t%d\t%d\t%s\t%s" % \
-                (family.upper(), name, chr, len(out_chr_seq), len(out_chr_seq) + length - 1, exon_str, strand)
+            print("%s\t%s\t%s\t%d\t%d\t%s\t%s" % \
+                (family.upper(), name, chr, len(out_chr_seq), len(out_chr_seq) + length - 1, exon_str, strand), file=locus_out_file)
 
             # Output coord (genotype_genome.coord)
-            print >> coord_out_file, "%s\t%d\t%d\t%d" % \
-                (chr, len(out_chr_seq), left, right - left + 1)
+            print("%s\t%d\t%d\t%d" % \
+                (chr, len(out_chr_seq), left, right - left + 1), file=coord_out_file)
             out_chr_seq += allele_seq
 
             # Output variants (genotype_genome.snp and genotype_genome.index.snp)
@@ -311,9 +311,9 @@ def build_genotype_genome(base_fname,
                     assert var_type == "insertion"
 
                 out_str = "%s\t%s\t%s\t%d\t%s" % (new_var_id, var_type, chr, new_var_left, var_data)
-                print >> var_out_file, out_str
+                print(out_str, file=var_out_file)
                 if var_id in index_var_ids:
-                    print >> index_var_out_file, out_str
+                    print(out_str, file=index_var_out_file)
                 var_num += 1
                 
             # Output haplotypes (genotype_genome.haplotype)
@@ -328,8 +328,8 @@ def build_genotype_genome(base_fname,
                 for var_id in ht_vars:
                     assert var_id in varID2htID
                     new_ht_vars.append(varID2htID[var_id])
-                print >> haplotype_out_file, "ht%d\t%s\t%d\t%d\t%s" % \
-                    (haplotype_num, chr, new_ht_left, new_ht_right, ','.join(new_ht_vars))
+                print("ht%d\t%s\t%d\t%d\t%s" % \
+                    (haplotype_num, chr, new_ht_left, new_ht_right, ','.join(new_ht_vars)), file=haplotype_out_file)
                 haplotype_num += 1
 
             # Output link information between alleles and variants (genotype_genome.link)
@@ -338,7 +338,7 @@ def build_genotype_genome(base_fname,
                 if var_id not in varID2htID:
                     continue
                 new_var_id = varID2htID[var_id]
-                print >> link_out_file, "%s\t%s" % (new_var_id, allele_names)
+                print("%s\t%s" % (new_var_id, allele_names), file=link_out_file)
                 
             off += (length - prev_length)
 
@@ -348,19 +348,19 @@ def build_genotype_genome(base_fname,
             continue
 
         # Write the rest of the Vars
-        chr_genotype_vari, chr_genotype_hti, haplotype_num = add_vars(sys.maxint, sys.maxint, chr_genotype_vari, chr_genotype_hti, haplotype_num)            
+        chr_genotype_vari, chr_genotype_hti, haplotype_num = add_vars(sys.maxsize, sys.maxsize, chr_genotype_vari, chr_genotype_hti, haplotype_num)            
             
-        print >> coord_out_file, "%s\t%d\t%d\t%d" % \
-            (chr, len(out_chr_seq), prev_right, len(chr_seq) - prev_right)
+        print("%s\t%d\t%d\t%d" % \
+            (chr, len(out_chr_seq), prev_right, len(chr_seq) - prev_right), file=coord_out_file)
         out_chr_seq += chr_seq[prev_right:]
 
         assert len(out_chr_seq) == len(chr_seq) + off
 
         # Output chromosome sequence
-        print >> genome_out_file, ">%s" % (chr_full_name)
+        print(">%s" % (chr_full_name), file=genome_out_file)
         line_width = 60
         for s in range(0, len(out_chr_seq), line_width):
-            print >> genome_out_file, out_chr_seq[s:s+line_width]
+            print(out_chr_seq[s:s+line_width], file=genome_out_file)
 
     genome_out_file.close()
     locus_out_file.close()
@@ -378,7 +378,7 @@ def build_genotype_genome(base_fname,
         for database in database_list:
             for line in open("%s.allele" % database):
                 allele_name = line.strip()
-                print >> allele_out_file, "%s\t%s" % (database.upper(), allele_name)
+                print("%s\t%s" % (database.upper(), allele_name), file=allele_out_file)
     allele_out_file.close()
 
     partial_out_file = open("%s.partial" % base_fname, 'w')
@@ -386,7 +386,7 @@ def build_genotype_genome(base_fname,
         for database in database_list:
             for line in open("%s.partial" % database):
                 allele_name = line.strip()
-                print >> partial_out_file, "%s\t%s" % (database.upper(), allele_name)
+                print("%s\t%s" % (database.upper(), allele_name), file=partial_out_file)
     partial_out_file.close()
 
     if not graph_index:
@@ -412,7 +412,7 @@ def build_genotype_genome(base_fname,
                      "%s.fa" % base_fname,
                      "%s" % base_fname]
     if verbose:
-        print >> sys.stderr, "\tRunning:", ' '.join(build_cmd)
+        print("\tRunning:", ' '.join(build_cmd), file=sys.stderr)
         
     subprocess.call(build_cmd, stdout=open("/dev/null", 'w'), stderr=open("/dev/null", 'w'))
 
@@ -422,7 +422,7 @@ def build_genotype_genome(base_fname,
         index_fnames = ["%s.%d.bt2" % (base_fname, i+1) for i in range(4)]
         index_fnames += ["%s.rev.%d.bt2" % (base_fname, i+1) for i in range(2)]
     if not typing_common.check_files(index_fnames):
-        print >> sys.stderr, "Error: indexing failed!  Perhaps, you may have forgotten to build %s executables?" % aligner
+        print("Error: indexing failed!  Perhaps, you may have forgotten to build %s executables?" % aligner, file=sys.stderr)
         sys.exit(1)
 
         
@@ -442,7 +442,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     if args.inter_gap > args.intra_gap:
-        print >> sys.stderr, "Error: --inter-gap (%d) must be smaller than --intra-gap (%d)" % (args.inter_gap, args.intra_gap)
+        print("Error: --inter-gap (%d) must be smaller than --intra-gap (%d)" % (args.inter_gap, args.intra_gap), file=sys.stderr)
         sys.exit(1)
     
     if not args.base_fname:
@@ -460,11 +460,11 @@ if __name__ == '__main__':
         database_list = args.locus_list.split(',')
 
     if args.use_clinvar and args.use_commonvar:
-        print >> sys.stderr, "Error: both --clinvar and --commonvar cannot be used together."
+        print("Error: both --clinvar and --commonvar cannot be used together.", file=sys.stderr)
         sys.exit(1)
 
     if args.aligner not in ["hisat2", "bowtie2"]:
-        print >> sys.stderr, "Error: --aligner should be either hisat2 or bowtie2."
+        print("Error: --aligner should be either hisat2 or bowtie2.", file=sys.stderr)
         sys.exit(1)        
 
     build_genotype_genome(args.base_fname,
