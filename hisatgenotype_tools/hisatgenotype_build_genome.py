@@ -19,14 +19,12 @@
 # along with HISAT 2.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-
 import os, sys, subprocess, re
 import shutil
 import inspect
 from argparse import ArgumentParser, FileType
 import hisatgenotype_typing_common as typing_common
 import hisatgenotype_args as arguments
-
 
 """
 """
@@ -242,7 +240,7 @@ def build_genotype_genome(base_fname,
             chr_genotype_vari, chr_genotype_hti, haplotype_num = add_vars(left, right, chr_genotype_vari, chr_genotype_hti, haplotype_num)
 
             # Read HLA backbone sequences
-            allele_seqs = typing_common.read_allele_sequences("%s_backbone.fa" % family)
+            allele_seqs = typing_common.read_allele_seq("%s_backbone.fa" % family)
 
             # Read HLA variants
             allele_vars = typing_common.read_variants("%s.snp" % family)
@@ -252,7 +250,7 @@ def build_genotype_genome(base_fname,
             allele_haplotypes = typing_common.read_haplotypes("%s.haplotype" % family)
 
             # Read HLA link information between haplotypes and variants
-            links = typing_common.read_links("%s.link" % family)
+            links = typing_common.read_links("%s.link" % family, True)
 
             if name not in allele_seqs:
                 continue
@@ -338,7 +336,7 @@ def build_genotype_genome(base_fname,
                 if var_id not in varID2htID:
                     continue
                 new_var_id = varID2htID[var_id]
-                print("%s\t%s" % (new_var_id, allele_names), file=link_out_file)
+                print("%s\t%s" % (new_var_id, " ".join(allele_names)), file=link_out_file)
                 
             off += (length - prev_length)
 

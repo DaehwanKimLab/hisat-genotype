@@ -223,7 +223,7 @@ def samtools_caller(bam_fname,
         subprocess.call(sort_cmd)
     if not os.path.exists('%s.fai' % genome_fname):
         subprocess.call(genome_index_cmd)
-    bcf_in = subprocess.Popen(bcf_call_cmd_in, stdout=PIPE)
+    bcf_in = subprocess.Popen(bcf_call_cmd_in, stdout=subprocess.PIPE)
     bcf_out = subprocess.Popen(bcf_call_cmd_out, stdin=bcf_in.stdout)
 
 def record_variants(aligner,

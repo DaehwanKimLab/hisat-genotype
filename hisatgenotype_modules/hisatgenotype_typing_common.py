@@ -1,25 +1,28 @@
 #!/usr/bin/env python
-#
-# Copyright 2017, Daehwan Kim <infphilo@gmail.com>
-#
-# This file is part of HISAT-genotype.
-#
-# HISAT-genotype is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# HISAT-genotype is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.
-#
+# --------------------------------------------------------------------------- #
+# Copyright 2017, Daehwan Kim <infphilo@gmail.com>                            #
+#                                                                             # 
+# This file is part of HISAT-genotype. It's purpose is a function module for  #
+# all of HISAtgenotype and holds commonly used scripts                        #
+#                                                                             #
+# HISAT-genotype is free software: you can redistribute it and/or modify      #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation, either version 3 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# HISAT-genotype is distributed in the hope that it will be useful,           #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.     #
+# --------------------------------------------------------------------------- #
 
-
-import sys, os, subprocess, re
+import sys
+import os
+import subprocess
+import re
 import math
 import random
 import errno
@@ -27,13 +30,22 @@ from copy import deepcopy
 from datetime import datetime
 import hisatgenotype_typing_process as typing_process
 
-##################################################
-#   Sequence processing routines
-##################################################
+# --------------------------------------------------------------------------- #
+#   Sequence processing routines and common functions                         #
+# --------------------------------------------------------------------------- #
+""" Wrapper for attempting to lock a function during multiprocessing """
+def locking(func):
+    def wrapper():
+        try: lock.acquire()
+        except: pass
 
+        func()
 
-"""
-"""
+        try: lock.release()
+        except: pass
+
+    return wrapper
+
 def reverse_complement(seq):
     comp_table = {'A':'T', 'C':'G', 'G':'C', 'T':'A'}
     rc_seq = ""
@@ -44,8 +56,6 @@ def reverse_complement(seq):
             rc_seq += s
     return rc_seq
 
-"""
-"""
 def string_slice(string, pos):
     new_string = ''
     new_string += string[:pos]
@@ -54,11 +64,10 @@ def string_slice(string, pos):
     assert len(string) == 1+len(new_string)
     return new_string
 
-"""
-"""
 def read_genome(genome_file):
     chr_dic, chr_names, chr_full_names = {}, [], []
 
+    # Reading whole file in at once loads the data a lot faster
     seqs = open(genome_file, 'r').read()
     seqs = seqs.strip('\n').split('>')[1:]
 
@@ -78,12 +87,16 @@ def read_genome(genome_file):
     return chr_dic, chr_names, chr_full_names
 
 
-##################################################
-#   Alleles, variants, haplotypes, etc.
-##################################################
-"""
-"""
-def collapse_alleles(index = {}, seqs = [], emptySeq = '', list_collapse = False, verbose = False):
+# --------------------------------------------------------------------------- #
+# Functions handling Alleles, variants, haplotypes, etc.                      #
+# --------------------------------------------------------------------------- #
+""" This will remove dupliate sequences or sequences that are redundant """
+""" Identical substrings in larger strings are also removed """
+def collapse_alleles(index = {}, 
+                     seqs = [], 
+                     emptySeq = '', 
+                     list_collapse = False, 
+                     verbose = False):
     remove = []
     col_index = {}
     for allele_i, index_i in index.items():
@@ -100,11 +113,13 @@ def collapse_alleles(index = {}, seqs = [], emptySeq = '', list_collapse = False
             
             if seq_i == seq_j and allele_i > allele_j:
                 if len(allele_i) <= len(allele_j):
-                    if verbose: print('\t\t %s is %s : Removing' % (allele_i, allele_j))
+                    if verbose: 
+                        print('\t\t %s is %s : Removing' % (allele_i, allele_j))
                     remove.append([index_i, allele_i])
                     col_index.update({ allele_i : allele_j })
                 else:
-                    if verbose: print('\t\t %s is %s : Removing' % (allele_j, allele_i))
+                    if verbose: 
+                        print('\t\t %s is %s : Removing' % (allele_j, allele_i))
                     remove.append([index_j, allele_j])
                     col_index.update({ allele_j : allele_i })
                 break
@@ -112,20 +127,28 @@ def collapse_alleles(index = {}, seqs = [], emptySeq = '', list_collapse = False
             if len(seq_i_strip) < len(seq_j_strip):
                 if seq_i_strip in seq_j_strip:
                     if 'HG38.ref' in allele_i or 'exon' in allele_i:
-                        if verbose: print('\t\t Collapsing %s into %s' % (allele_i, allele_j))
+                        if verbose: 
+                            print('\t\t Collapsing %s into %s' 
+                                  % (allele_i, allele_j))
                         remove.append([index_i, allele_i])
                         col_index.update({ allele_i : allele_j })
-                    elif ('refSeq' in allele_j) or (('refSeq' in allele_i) and ('.' not in allele_j)):
-                        if verbose: print('\t\t Collapsing %s into %s' % (allele_j, allele_i))
+                    elif ('refSeq' in allele_j) \
+                            or (('refSeq' in allele_i) \
+                                and ('.' not in allele_j)):
+                        if verbose: 
+                            print('\t\t Collapsing %s into %s' 
+                                  % (allele_j, allele_i))
                         remove.append([index_j, allele_j])
                         col_index.update({ allele_j : allele_i })                      
                     else:
-                        if verbose: print('\t\t Collapsing %s into %s' % (allele_i, allele_j))
+                        if verbose: 
+                            print('\t\t Collapsing %s into %s' 
+                                  % (allele_i, allele_j))
                         remove.append([index_i, allele_i])
                         col_index.update({ allele_i : allele_j })
                     break
     
-    remove.sort(reverse = True, key = lambda x: x[0])
+    remove.sort(reverse = True, key = lambda x: x[0]) # remove from END of seqs
     for i in remove:
         del seqs[i[0]]
         del index[i[1]]
@@ -141,45 +164,108 @@ def collapse_alleles(index = {}, seqs = [], emptySeq = '', list_collapse = False
     else:
         return index, seqs
 
-"""
-"""
-def read_allele_sequences(fname):
-    allele_seqs = {}
-    allele_name, sequence = "", ""
-    for line in open(fname):
-        if line.startswith(">"):
-            if allele_name != "" and allele_name not in allele_seqs:
-                allele_seqs[allele_name] = sequence
-            allele_name = line.strip()[1:]
-            sequence = ""
+""" Read .locus file for gene coordinates. """
+""" File format: Gene/name, chromosome, start, stop, len, exon_str, strand """
+def read_locus(fname, 
+               isgenome, 
+               target, 
+               refGenes     = {},
+               refGene_loci = {}):
+    loci = open(fname, 'r').read()
+    loci = loci.strip("\n").split("\n")
+    while loci:
+        locus = loci.pop(0).split()
+        if isgenome:
+            gene, gene_name, chrom, left, right, exon_str, strand = locus
+            if gene.lower() != target:
+                continue
         else:
-            sequence += line.strip()
-    if allele_name != "" and allele_name not in allele_seqs:
-        allele_seqs[allele_name] = sequence
-    return allele_seqs
+            gene_name, chrom, left, right, _, exon_str, strand = locus
+        gene_gene = gene_name.split('*')[0]
+        assert not gene_gene in refGenes
+        refGenes[gene_gene] = gene_name
+        left, right = int(left), int(right)
+        exons, primary_exons = [], []
+        for exon in exon_str.split(','):
+            primary = exon.endswith('p')
+            if primary:
+                exon = exon[:-1]
+            exon_left, exon_right = exon.split('-')
+            exon_left, exon_right = int(exon_left), int(exon_right)
+            exons.append([exon_left, exon_right])
+            if primary:
+                primary_exons.append([exon_left, exon_right])
+        refGene_loci[gene_gene] = [gene_name, chr, left, right, exons, primary_exons]
+    return refGenes, refGene_loci
 
+""" Read the allele sequences from fasta format 'backbone.fa' files  """
+""" Returns either a local dictionary or operates as a 'pass by ref' """
+def read_allele_seq(fname, dic = {}, genes = False):
+    seqs = open(fname, 'r').read()
+    seqs = seqs.strip("\n").split(">")[1:]
+    while seqs:
+        seq      = seqs.pop(0)
+        ix       = seq.find("\n")
+        seqname  = seq[:ix]
+        sequence = seq[ix:].replace("\n", "")
+        if genes:
+            gene = seqname.split('*')[0]
+            if gene not in dic:
+                dic[gene] = {}
+            ptr = dic[gene] # Makes 'pointer' to dictionary level
+        else:
+            ptr = dic
 
-"""
-"""
-def read_variants(fname):
-    allele_vars = {}
-    for line in open(fname):
-        var_id, type, allele_name, left, data = line.strip().split()
-        left = int(left)
-        if type == "deletion":
-            data = int(data)
-        if allele_name not in allele_vars:
-            allele_vars[allele_name] = []
-        allele_vars[allele_name].append([left, type, data, var_id])
-    return allele_vars
+        if seqname in ptr:
+            print("Error: Nonunique sequence name: %s" % seqname,
+                  file=sys.stderr)
+            exit(1)
+        ptr[seqname] = sequence
+    return dic
 
+## TODO ADD FORMAT NOTES TO ALL BELOW
+""" Read variants from '.snp' files """
+""" File format: variant ID, type, gene/allele name, position, sequence """
+def read_variants(fname, genes = False):
+    vardata  = {}
+    varlist  = {}
+    variants = open(fname, 'r').read()
+    variants = variants.strip("\n").split("\n")
+    while variants:
+        varset = variants.pop(0)
+        var_id, var_type, name, pos, var = varset.split("\t")
+        if var_type == 'Deletion':
+            var = int(var)
+        pos  = int(pos)
+        gene = name.split("*")[0] if genes else name
+        if not gene in vardata:
+            vardata[gene] = {}
+            assert not gene in varlist
+            varlist[gene] = []
 
-"""
-"""
+        if genes:
+            assert not var_id in vardata[gene]
+            vardata[gene][var_id] = [var_type, pos, var]
+            varlist[gene].append([pos, var_id])
+        else:
+            varlist[gene].append([pos, var_type, var, var_id])
+    for gene in varlist:
+        varlist[gene].sort(key = lambda x: x[0])
+    
+    if genes:
+        return vardata, varlist
+    else:
+        return varlist
+
+""" Read haplotypes from '.hap' files """
+""" File format: Haplotype ID, allele backbone, left pos, right pos, var list """
 def read_haplotypes(fname):
     allele_haplotypes = {}
-    for line in open(fname):
-        haplotype_id, allele_name, left, right, vars = line.strip().split()
+    haplotypes = open(fname, 'r').read()
+    haplotypes = haplotypes.strip("\n").split("\n")
+    while haplotypes:
+        hap = haplotypes.pop(0)
+        haplotype_id, allele_name, left, right, vars = hap.split()
         vars = vars.split(',')
         left, right = int(left), int(right)
         if allele_name not in allele_haplotypes:
@@ -187,49 +273,30 @@ def read_haplotypes(fname):
         allele_haplotypes[allele_name].append([left, right, vars])
     return allele_haplotypes
 
-
-"""
-"""
-def read_links(fname):
-    links = []
-    for line in open(fname):
-        var_id, allele_names = line.strip().split('\t')
-        links.append([var_id, allele_names])
+""" Read linkages from '.link' files """
+""" File format: variant ID, list of alleles"""
+def read_links(fname, aslist = False):
+    links = [] if aslist else {}
+    linklist = open(fname, "r").read()
+    linklist = linklist.strip("\n").split("\n")
+    while linklist:
+        link = linklist.pop(0)
+        link = link.replace(" ", "\t").split("\t")
+        var_id, allele_names = link[0], link[1:]
+        if aslist:
+            # Make sure aslist is handled properly otherwise error if dic append
+            links.append([var_id, allele_names])
+        else:
+            assert not var_id in links
+            links[var_id] = allele_names
+    
     return links
 
-
-"""
-Compare two variants
-"""
-def compare_vars(a, b):
-    a_pos, a_type, a_data = a[:3]
-    b_pos, b_type, b_data = b[:3]
-
-    if a_pos != b_pos:
-        return a_pos - b_pos
-    if a_type != b_type:
-         if a_type == 'I':
-             return -1
-         elif b_type == 'I':
-             return 1
-         if a_type == 'S':
-             return -1
-         else:
-             return 1
-    if a_data < b_data:
-        return -1
-    elif a_data > b_data:
-        return 1
-    else:
-        return 0
-
-
-"""
-"""
+""" Binary search the Variant list to find the lower position """
 def lower_bound(Var_list, pos):
     low, high = 0, len(Var_list)
     while low < high:
-        m = (low + high) / 2
+        m = int((low + high) / 2)
         m_pos = Var_list[m][0]
         if m_pos < pos:
             low = m + 1
@@ -244,44 +311,45 @@ def lower_bound(Var_list, pos):
             return m
     return low
 
-
-
-"""
-"""
+""" Simple check for exsistance of file """
 def check_files(fnames):
     for fname in fnames:
         if not os.path.exists(fname):
+            print("No %s file found" % fname,
+                  file=sys.stderr)
             return False
     return True
 
 
-##################################################
-#   Database releated routines
-##################################################
-
-    
-"""
-Download GRCh38 human reference and HISAT2 indexes
-"""
+# --------------------------------------------------------------------------- #
+# Database releated routines and functions                                    #
+# --------------------------------------------------------------------------- #
+""" Download GRCh38 human reference and HISAT2 indexes """
+@locking
 def download_genome_and_index():
     HISAT2_fnames = ["grch38",
                      "genome.fa",
                      "genome.fa.fai"]
+
+    script = ["wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat2/data/grch38.tar.gz",
+              "tar xvzf grch38.tar.gz",
+              "rm grch38.tar.gz",
+              "hisat2-inspect grch38/genome > genome.fa",
+              "samtools faidx genome.fa"]
+
     if not check_files(HISAT2_fnames):
-        os.system("wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat2/data/grch38.tar.gz; tar xvzf grch38.tar.gz; rm grch38.tar.gz")
-        os.system("hisat2-inspect grch38/genome > genome.fa")
-        os.system("samtools faidx genome.fa")
+        for cmd in script:
+            os.system(cmd)
 
-
-"""
-"""
+""" This will clone the HISATgenotype database """
+@locking
 def clone_hisatgenotype_database():
-    os.system("git clone https://github.com/DaehwanKimLab/hisatgenotype_db.git")
-    os.system("cd hisatgenotype_db; git checkout hisatgenotype_v1.0.2_beta; cd ..")
+    if not os.path.exists("hisatgenotype_db"):
+        os.system("git clone https://github.com/DaehwanKimLab/hisatgenotype_db.git")
 
-
-"""
-"""
+""" Extracts a database if it doesn't exsist """
+""" Will set minimum variant frequency to 0.1 for HLA and leftshift to codis """
+@locking
 def extract_database_if_not_exists(base,
                                    locus_list,
                                    inter_gap = 30,
@@ -300,20 +368,6 @@ def extract_database_if_not_exists(base,
     if check_files(fnames):
         return
 
-    extract_cmd = ["hisatgenotype_toolkit", "extract-vars"]
-    extract_cmd += ["--base", base]
-    if len(locus_list) > 0:
-        extract_cmd += ["--locus-list", ','.join(locus_list)]    
-    if not partial:
-        extract_cmd += ["--no-partial"]
-    extract_cmd += ["--inter-gap", str(inter_gap),
-                    "--intra-gap", str(intra_gap)]
-    if base == "hla":
-        extract_cmd += ["--min-var-freq", "0.1"]
-
-    if base == "codis":
-        extract_cmd += ["--leftshift"]
-
     typing_process.extract_vars(base,
                                 '',
                                 locus_list,
@@ -326,20 +380,17 @@ def extract_database_if_not_exists(base,
                                 partial,
                                 verbose)
 
-    # DK - debugging purposes
-    # extract_cmd += ["--ext-seq", "300"]
     if verbose:
-        print("\tRunning:", ' '.join(extract_cmd), file=sys.stderr)
-    #proc = subprocess.Popen(extract_cmd, stdout=open("/dev/null", 'w'), stderr=open("/dev/null", 'w'))
-    #proc.communicate()
+        print("\tRunning Extraction for : %s" % base,
+              file=sys.stderr)
 
     if not check_files(fnames):
-        print("Error: hisatgenotype_extract_vars failed!", file=sys.stderr)
+        print("Error: hisatgenotype_extract_vars failed!", 
+              file=sys.stderr)
         sys.exit(1)
 
-        
-"""
-"""
+""" Builds HISAT2 or Bowtie2 index using native scripts """
+@locking
 def build_index_if_not_exists(base,
                               aligner,
                               index_type,
@@ -348,7 +399,8 @@ def build_index_if_not_exists(base,
     if aligner == "hisat2":
         # Build HISAT2 graph indexes based on the above information
         if index_type == "graph":
-            hisat2_graph_index_fnames = ["%s.graph.%d.ht2" % (base, i+1) for i in range(8)]
+            hisat2_graph_index_fnames = ["%s.graph.%d.ht2" \
+                                         % (base, i+1) for i in range(8)]
             if not check_files(hisat2_graph_index_fnames):
                 build_cmd = ["hisat2-build",
                              "-p", str(threads),
@@ -357,41 +409,51 @@ def build_index_if_not_exists(base,
                              "%s_backbone.fa" % base,
                              "%s.graph" % base]
                 if verbose:
-                    print("\tRunning:", ' '.join(build_cmd), file=sys.stderr)
-                proc = subprocess.Popen(build_cmd, stdout=open("/dev/null", 'w'), stderr=open("/dev/null", 'w'))
+                    print("\tRunning:", ' '.join(build_cmd), 
+                          file=sys.stderr)
+                proc = subprocess.Popen(build_cmd, 
+                                        stdout=open("/dev/null", 'w'), 
+                                        stderr=open("/dev/null", 'w'))
                 proc.communicate()        
                 if not check_files(hisat2_graph_index_fnames):
-                    print("Error: indexing HLA failed!  Perhaps, you may have forgotten to build hisat2 executables?", file=sys.stderr)
+                    print("Error: indexing HLA failed! Perhaps, you \
+                                forgot to build hisat2 executables?", 
+                          file=sys.stderr)
                     sys.exit(1)
         # Build HISAT2 linear indexes based on the above information
         else:
             assert index_type == "linear"
-            hisat2_linear_index_fnames = ["%s.linear.%d.ht2" % (base, i+1) for i in range(8)]
+            hisat2_linear_index_fnames = ["%s.linear.%d.ht2" \
+                                          % (base, i+1) for i in range(8)]
             if not check_files(hisat2_linear_index_fnames):
                 build_cmd = ["hisat2-build",
                              "%s_backbone.fa,%s_sequences.fa" % (base, base),
                              "%s.linear" % base]
-                proc = subprocess.Popen(build_cmd, stdout=open("/dev/null", 'w'), stderr=open("/dev/null", 'w'))
+                proc = subprocess.Popen(build_cmd, 
+                                        stdout=open("/dev/null", 'w'), 
+                                        stderr=open("/dev/null", 'w'))
                 proc.communicate()        
                 if not check_files(hisat2_linear_index_fnames):
-                    print("Error: indexing HLA failed!", file=sys.stderr)
+                    print("Error: indexing HLA failed!", 
+                          file=sys.stderr)
                     sys.exit(1)                    
     else:
         # Build Bowtie2 indexes based on the above information
         assert aligner == "bowtie2" and index_type == "linear"        
         bowtie2_index_fnames = ["%s.%d.bt2" % (base, i+1) for i in range(4)]
         bowtie2_index_fnames += ["%s.rev.%d.bt2" % (base, i+1) for i in range(2)]
-        if not check_files(bowtie2_index_fnames): # TODO: CB - Figure out what tcheck_files is
+        if not check_files(bowtie2_index_fnames):
             build_cmd = ["bowtie2-build",
                          "%s_backbone.fa,%s_sequences.fa" % (base, base),
                          base]
             proc = subprocess.Popen(build_cmd, stdout=open("/dev/null", 'w'))
             proc.communicate()        
             if not check_files(bowtie2_index_fnames):
-                print("Error: indexing HLA failed!", file=sys.stderr)
+                print("Error: indexing HLA failed!", 
+                      file=sys.stderr)
                 sys.exit(1)
 
-# Goal is to match file names in directory if paired
+""" Function to match file names in directory if paired and using directory """
 def get_filename_match(fns): 
     fnames, fnames2, fnbase = [], [], []
     for i in range(0, len(fns), 2):
@@ -402,7 +464,12 @@ def get_filename_match(fns):
             s = fileL[j]
             if s != fileR[j]:
                 if s not in "LR12":
-                    print("Potential Error: Paired-end mode is selected and files %s and %s have an unexpected character %s to mark left and right pairings" % (fileL, fileR, s))
+                    print("Potential Error: Paired-end mode is selected \
+                                and files %s and %s have an unexpected \
+                                character %s to mark left and right \
+                                pairings" % (fileL, fileR, s))
+                    
+                    # We need to check the user is OK with the results
                     usr_input = ''
                     while True:
                         usr_input = input("Continue? (y/n): ")
@@ -420,7 +487,8 @@ def get_filename_match(fns):
             common += s
 
         if not common:
-            print("Error matching files %s and %s. Names don't match. Skipping inclusion" % (fileL, fileR))
+            print("Error matching files %s and %s. Names don't match. \
+                        Skipping inclusion" % (fileL, fileR))
             continue
 
         fnames.append(fileL)
@@ -429,19 +497,17 @@ def get_filename_match(fns):
     
     return fnames, fnames2, fnbase   
 
-##################################################
-#   Read simulation and alignment
-##################################################
-
-
+# --------------------------------------------------------------------------- #
+# Read simulation and alignment function                                      #
+# --------------------------------------------------------------------------- #
 """
 Simulate reads from alleles with headers (>) filled with mapping information.
   For an example, see hisat2_test_HLA_genotyping.py.
 """
-def simulate_reads(seq_dic,                       # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
-                   base_fname,                    # hla, codis, cyp, or so on
-                   allele_list,                   # ["A*32:29", "B*07:02:01"]
-                   Vars,                          # Vars["A"]["hv326"] = ["single", 604, "C"]
+def simulate_reads(seq_dic,         # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
+                   base_fname,      # hla, codis, cyp, or so on
+                   allele_list,     # ["A*32:29", "B*07:02:01"]
+                   Vars,            # Vars["A"]["hv326"] = ["single", 604, "C"]
                    Links,
                    simulate_interval = 1,
                    read_len = 100,
@@ -521,7 +587,8 @@ def simulate_reads(seq_dic,                       # seq_dic["A"]["A*24:36N"] = "
                 read_seq = ''.join(read_seq)
                 return read_seq                            
                             
-            # Get read alignment, e.g., 260|R_483_61M5D38M23D1M_46|S|hv154,3|S|hv162,10|D|hv185,38|D|hv266
+            # Get read alignment, e.g., 
+            # 260|R_483_61M5D38M23D1M_46|S|hv154,3|S|hv162,10|D|hv185,38|D|hv266
             def get_info(read_seq, pos):
                 info = "%d_" % (seq_map[pos] + 1)
                 total_match, match, sub_match = 0, 0, 0
@@ -543,14 +610,21 @@ def simulate_reads(seq_dic,                       # seq_dic["A"]["A*24:36N"] = "
                         var_str += ("%s|I|%s" % (sub_match, ins_var))
                         ins_len, ins_var = 0, ""
                         sub_match = 0
+                    
                     if ex_seq[map_i] != 'I':
                         if ex_desc[map_i] != "" or read_seq[i-pos] != ex_seq[map_i]:
                             if var_str != "":
                                 var_str += ','
-                            var_str += ("%d|S|%s" % (sub_match, ex_desc[map_i] if ex_desc[map_i] != "" else "unknown"))
+
+                            if ex_desc[map_i] != "":
+                                addition = ("%d|S|%s" % (sub_match, ex_desc[map_i]))
+                            else:
+                                addition = ("unknown")
+                            var_str += addition
                             sub_match = 0
                         else:
                             sub_match += 1
+                    
                     if i + 1 < pos + read_len and ex_seq[map_i+1] == 'D':
                         assert match > 0
                         info += ("%dM" % match)
@@ -565,6 +639,7 @@ def simulate_reads(seq_dic,                       # seq_dic["A"]["A*24:36N"] = "
                             var_str += ','
                         var_str += ("%s|D|%s" % (sub_match, ex_desc[map_i + 1]))
                         sub_match = 0
+                
                 assert match > 0
                 info += ("%dM" % match)
                 assert total_match == read_len
@@ -646,8 +721,12 @@ def simulate_reads(seq_dic,                       # seq_dic["A"]["A*24:36N"] = "
                 else:
                     assert var_type == "insertion"
                     ins_len = len(var_data)
-                    allele_ex_seq = allele_ex_seq[:var_pos] + (['I'] * ins_len) + allele_ex_seq[var_pos:]
-                    allele_ex_desc = allele_ex_desc[:var_pos] + ([var_id] * ins_len) + allele_ex_desc[var_pos:]
+                    allele_ex_seq = allele_ex_seq[:var_pos] \
+                                        + (['I'] * ins_len) \
+                                        + allele_ex_seq[var_pos:]
+                    allele_ex_desc = allele_ex_desc[:var_pos] \
+                                        + ([var_id] * ins_len) \
+                                        + allele_ex_desc[var_pos:]
                     add_pos += ins_len
             allele_ex_seq = ''.join(allele_ex_seq)
             assert len(backbone_seq) + add_pos == len(allele_ex_seq)            
@@ -680,19 +759,26 @@ def simulate_reads(seq_dic,                       # seq_dic["A"]["A*24:36N"] = "
 
         # Write reads into a FASTA file
         def write_reads(reads, idx, out_dir):
-            read_directory = '%s/dir_%s/dir_test-%d_%s' % (out_dir, gene, test_i, '_'.join(allele_names).replace("*", "-"))
+            ident = '_'.join(allele_names).replace("*", "-")
+            fname = '%s_input_%d.fa' % (base_fname, idx)
+            read_directory = '%s/dir_%s/dir_test-%d_%s' \
+                              % (out_dir, gene, test_i, ident)
 
             mkdir_p(read_directory)
-            read_file2 = open('%s/%s_input_%d.fa' % (read_directory, base_fname, idx), 'w')
-            read_file = open('%s_input_%d.fa' % (base_fname, idx), 'w')
+            read_file2 = open('%s/%s' % (read_directory, fname), 'w')
+            read_file = open(fname, 'w')
             for read_i in range(len(reads)):
                 query_name = "%d|%s_%s" % (read_i + 1, "LR"[idx-1], reads[read_i][1])
                 if len(query_name) > 251:
                     query_name = query_name[:251]
-                print(">%s" % query_name, file=read_file)
-                print(reads[read_i][0], file=read_file)
-                print(">%s" % query_name, file=read_file2)
-                print(reads[read_i][0], file=read_file2)
+                print(">%s" % query_name, 
+                      file=read_file)
+                print(reads[read_i][0], 
+                      file=read_file)
+                print(">%s" % query_name, 
+                      file=read_file2)
+                print(reads[read_i][0], 
+                      file=read_file2)
             read_file.close()
             read_file2.close()
 
@@ -701,10 +787,7 @@ def simulate_reads(seq_dic,                       # seq_dic["A"]["A*24:36N"] = "
 
     return num_pairs
 
-
-"""
-Align reads, and sort the alignments into a BAM file
-"""
+""" Align reads, and sort the alignments into a BAM file """
 def align_reads(aligner,
                 simulation,
                 index_name,
@@ -721,7 +804,7 @@ def align_reads(aligner,
             aligner_cmd += ["--no-unal"]            
         DNA = True
         if DNA:
-            aligner_cmd += ["--no-spliced-alignment"] # no spliced alignment
+            aligner_cmd += ["--no-spliced-alignment"]
             aligner_cmd += ["-X", "1000"] # max fragment length
         if index_type == "linear":
             aligner_cmd += ["-k", "10"]
@@ -756,37 +839,26 @@ def align_reads(aligner,
                                   stdout=subprocess.PIPE,
                                   stderr=open("/dev/null", 'w'))
    
-    sambam_cmd = ["samtools",
-                  "view",
-                  "-bS",
-                  "-"]
+    sambam_cmd = ["samtools", "view", "-bS", "-"]
     sambam_proc = subprocess.Popen(sambam_cmd,
                                    stdin=align_proc.stdout,
                                    stdout=open(out_fname + ".unsorted", 'w'),
                                    stderr=open("/dev/null", 'w'))
     sambam_proc.communicate()
-    if index_type == "graph":
-        bamsort_cmd = ["samtools",
-                       "sort",
-                       out_fname + ".unsorted",
-                       "-o", out_fname]
-        bamsort_proc = subprocess.Popen(bamsort_cmd,
-                                        stderr=open("/dev/null", 'w'))
-        bamsort_proc.communicate()
+    
+    bamsort_cmd = ["samtools", "sort", out_fname + ".unsorted", "-o", out_fname]
+    bamsort_proc = subprocess.Popen(bamsort_cmd,
+                                    stderr=open("/dev/null", 'w'))
+    bamsort_proc.communicate()
 
-        bamindex_cmd = ["samtools",
-                        "index",
-                        out_fname]
-        bamindex_proc = subprocess.Popen(bamindex_cmd,
-                                         stderr=open("/dev/null", 'w'))
-        bamindex_proc.communicate()
+    bamindex_cmd = ["samtools", "index", out_fname]
+    bamindex_proc = subprocess.Popen(bamindex_cmd,
+                                        stderr=open("/dev/null", 'w'))
+    bamindex_proc.communicate()
 
     os.system("rm %s" % (out_fname + ".unsorted"))
 
-
-"""
-HISAT-genotype's mpileup
-"""
+""" HISAT-genotype's mpileup """
 def get_mpileup(alignview_cmd,
                 ref_seq,
                 base_locus,
@@ -914,8 +986,7 @@ def get_mpileup(alignview_cmd,
     return mpileup
 
 
-"""
-"""
+""" Get distance between pairs of reads """
 def get_pair_interdist(alignview_cmd,
                        simulation,
                        verbose):
@@ -987,20 +1058,17 @@ def get_pair_interdist(alignview_cmd,
     dist_list = sorted(dist_list)
     dist_avg = sum(dist_list) / max(1, len(dist_list))
     if len(dist_list) > 0:
-        dist_median = dist_list[len(dist_list)/2]
+        dist_median = dist_list[int(len(dist_list)/2)]
     else:
         dist_median = -1
 
     return dist_median
 
 
-##################################################
-#   Statistical routines
-##################################################
-
-
-"""
-"""
+# --------------------------------------------------------------------------- #
+# Statistical routines for genotyping                                         #
+# --------------------------------------------------------------------------- #
+""" Get the difference between two allele probabilities from dictionary """
 def prob_diff(prob1, prob2):
     diff = 0.0
     for allele in prob1.keys():
@@ -1010,24 +1078,7 @@ def prob_diff(prob1, prob2):
             diff += prob1[allele]
     return diff
 
-
-"""
-"""
-def Gene_prob_cmp(a, b):
-    if a[1] != b[1]:
-        if a[1] < b[1]:
-            return 1
-        else:
-            return -1
-    assert a[0] != b[0]
-    if a[0] < b[0]:
-        return -1
-    else:
-        return 1
-
-
-"""
-"""
+""" CORE : Expectation Maximization Algorithm """
 def single_abundance(Gene_cmpt,
                      remove_low_abundance_allele = False,
                      Gene_length = {}):
@@ -1057,7 +1108,9 @@ def single_abundance(Gene_cmpt,
     else:
         normalize(Gene_prob)
 
-    def next_prob(Gene_cmpt, Gene_prob, Gene_length):
+    def next_prob(Gene_cmpt, 
+                  Gene_prob, 
+                  Gene_length):
         Gene_prob_next = {}
         for cmpt, count in Gene_cmpt.items():
             alleles = cmpt.split('-')
@@ -1073,7 +1126,9 @@ def single_abundance(Gene_cmpt,
                     continue
                 if allele not in Gene_prob_next:
                     Gene_prob_next[allele] = 0.0
-                Gene_prob_next[allele] += (float(count) * Gene_prob[allele] / alleles_prob)
+                Gene_prob_next[allele] += (float(count) 
+                                            * Gene_prob[allele] 
+                                            / alleles_prob)
         if len(Gene_length) > 0:
             normalize_len(Gene_prob_next, Gene_length)
         else:
@@ -1097,8 +1152,11 @@ def single_abundance(Gene_cmpt,
         if fast_EM:
             # Accelerated version of EM - SQUAREM iteration
             #    Varadhan, R. & Roland, C. Scand. J. Stat. 35, 335-353 (2008)
-            #    Also, this algorithm is used in Sailfish - http://www.nature.com/nbt/journal/v32/n5/full/nbt.2862.html
-            Gene_prob_next2 = next_prob(Gene_cmpt, Gene_prob_next, Gene_length)
+            #    Also, this algorithm is used in Sailfish 
+            #    http://www.nature.com/nbt/journal/v32/n5/full/nbt.2862.html
+            Gene_prob_next2 = next_prob(Gene_cmpt, 
+                                        Gene_prob_next, 
+                                        Gene_length)
             sum_squared_r, sum_squared_v = 0.0, 0.0
             p_r, p_v = {}, {}
             for a in Gene_prob.keys():
@@ -1109,10 +1167,20 @@ def single_abundance(Gene_cmpt,
             if sum_squared_v > 0.0:
                 gamma = -math.sqrt(sum_squared_r / sum_squared_v)
                 for a in Gene_prob.keys():
-                    Gene_prob_next2[a] = max(0.0, Gene_prob[a] - 2 * gamma * p_r[a] + gamma * gamma * p_v[a]);
-                Gene_prob_next = next_prob(Gene_cmpt, Gene_prob_next2, Gene_length)
+                    Gene_prob_next2[a] = max(0.0, 
+                                             Gene_prob[a] 
+                                                - 2 
+                                                * gamma 
+                                                * p_r[a] 
+                                                + gamma 
+                                                * gamma 
+                                                * p_v[a])
+                Gene_prob_next = next_prob(Gene_cmpt, 
+                                           Gene_prob_next2, 
+                                           Gene_length)
 
-        diff = prob_diff(Gene_prob, Gene_prob_next)
+        diff = prob_diff(Gene_prob, 
+                         Gene_prob_next)
         Gene_prob = Gene_prob_next
 
         # Accelerate convergence
@@ -1135,27 +1203,25 @@ def single_abundance(Gene_cmpt,
     else:
         normalize(Gene_prob)
     Gene_prob = [[allele, prob] for allele, prob in Gene_prob.items()]
-    Gene_prob = sorted(Gene_prob, cmp=Gene_prob_cmp)
+    Gene_prob = sorted(Gene_prob, key = lambda x: x[1])
     return Gene_prob
 
 
-##################################################
-#   Realignment, alternative alignments
-##################################################
-
-
+# --------------------------------------------------------------------------- #
+# Functions for Realignment, alternative alignments
+# --------------------------------------------------------------------------- #
 """
 Identify alternative haplotypes
    insertions are not considered...
 
    INPUT: see the function's parameters below
-   OUPUT: 529-hv8-hv22-606: set(['529-hv13-570', '529-hv4-hv18-590', '529-hv2-hv16-582'])
+   OUPUT: 529-hv8-hv22-606: set(['529-hv13-570', '529-hv4-hv18-590', ...)
           529-hv3-hv17-598: set(['529-hv6-hv21-hv26-610'])
 """
-def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATAGATAGATACATACATACATACATACATACAGGATAGATAACTAGG...
-                     allele_vars, # {'VWA*20(22)': ['hv231', 'hv245'], "VWA*16(18')": ['hv235', 'hv250', 'hv256'], ...}
-                     Vars,        # {'hv241': ['deletion', 529, '52'], 'hv240': ['deletion', 529, '48'], ... }
-                     Var_list,    # [[529, 'hv230'], [529, 'hv231'], [529, 'hv232'], [529, 'hv233'], ...]
+def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATA...
+                     allele_vars, # {'VWA*20(22)': ['hv231', 'hv245'], ...}
+                     Vars,        # {'hv241': ['deletion', 529, '52'], ... }
+                     Var_list,    # [[529, 'hv230'], [529, 'hv231'], ...]
                      verbose):
     haplotype_alts_left, haplotype_alts_right = {}, {}
     second_order_haplotypes = set()
@@ -1172,7 +1238,7 @@ def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATAGATAGATACA
         elif var_type == "insertion":
             var_pos += 1
         rev_Var_list.append([var_pos, var_id])
-    rev_Var_list = sorted(rev_Var_list, cmp=lambda a, b: a[0] - b[0])
+    rev_Var_list = sorted(rev_Var_list, key = lambda a, b: a[0] - b[0])
 
     def nextbases(haplotype,
                   left = True,
@@ -1212,7 +1278,10 @@ def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATAGATAGATACA
                 if var_type == "single":
                     bases.append([[var_pos, var_id] + haplotype[1:], var_data])
                 elif var_type == "deletion":
-                    bases2 = nextbases([var_pos - int(var_data) + 1, var_id] + haplotype[1:],
+                    bases2 = nextbases([var_pos 
+                                            - int(var_data) 
+                                            + 1, 
+                                        var_id] + haplotype[1:],
                                        left,
                                        exclude_list)
                     bases += bases2
@@ -1242,7 +1311,9 @@ def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATAGATAGATACA
                 if var_type == "single":
                     bases.append([haplotype[:-1] + [var_id, var_pos], var_data])
                 elif var_type == "deletion":
-                    bases2 = nextbases(haplotype[:-1] + [var_id, var_pos + int(var_data) - 1],
+                    bases2 = nextbases(haplotype[:-1] + [var_id, var_pos 
+                                                                    + int(var_data) 
+                                                                    - 1],
                                        left,
                                        exclude_list)
                     bases += bases2
@@ -1294,13 +1365,16 @@ def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATAGATAGATACA
                 if bp != bp2:
                     continue
 
-                # Todo: implement a routine to handle haplotypes ending with the same coordinate
+                # TODO: implement a routine to handle haplotypes ending with
+                # the same coordinate
                 if left:
-                    left1, left2 = int(next_haplotype[0]), int(next_haplotype_alt[0])
+                    left1 = int(next_haplotype[0])
+                    left2 = int(next_haplotype_alt[0])
                     if left1 == left2:
                         continue
                 else:
-                    right1, right2 = int(next_haplotype[-1]), int(next_haplotype_alt[-1])
+                    right1 = int(next_haplotype[-1])
+                    right2 = int(next_haplotype_alt[-1])
                     if right1 == right2:
                         continue
 
@@ -1317,11 +1391,18 @@ def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATAGATAGATACA
                     if len(haplotype) <= 2:
                         haplotype = "%d-%d" % (haplotype[0], haplotype[1])
                     else:
-                        haplotype = "%d-%s-%d" % (haplotype[0], '-'.join(haplotype[1:-1]), haplotype[-1])
+                        haplotype = "%d-%s-%d" % (haplotype[0], 
+                                                  '-'.join(haplotype[1:-1]), 
+                                                  haplotype[-1])
                     return haplotype
 
-                haplotype, haplotype_alt = to_haplotype_str(haplotype), to_haplotype_str(haplotype_alt)
-                haplotype_alts = haplotype_alts_left if left else haplotype_alts_right
+                haplotype = to_haplotype_str(haplotype)
+                haplotype_alt = to_haplotype_str(haplotype_alt)
+                if left:
+                    haplotype_alts = haplotype_alts_left
+                else:
+                    haplotype_alts = haplotype_alts_right
+
                 if haplotype not in haplotype_alts:
                     haplotype_alts[haplotype] = set()
                 haplotype_alts[haplotype].add(haplotype_alt)
@@ -1362,13 +1443,14 @@ def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATAGATAGATACA
                 haplotype_alt_seq = get_haplotype_seq(haplotype_alt.split('-'))
                 assert haplotype_seq == haplotype_alt_seq            
 
-    if verbose: print("number of left haplotypes:", len(haplotype_alts_left))
+    if verbose: 
+        print("number of left haplotypes:", len(haplotype_alts_left))
     print_haplotype_alts(haplotype_alts_left)
-    if verbose: print("number of right haplotypes:", len(haplotype_alts_right))
+    if verbose: 
+        print("number of right haplotypes:", len(haplotype_alts_right))
     print_haplotype_alts(haplotype_alts_right)
 
     return haplotype_alts_left, haplotype_alts_right
-
 
 """
 Identify ambigious differences that may account for other alleles,
@@ -1402,7 +1484,6 @@ def identify_ambigious_diffs(ref_seq,
                 seq += ref_seq[pos]
             elif type == "insertion":
                 None
-                # seq += data
             else:
                 assert type == "deletion"
 
@@ -1627,7 +1708,8 @@ def identify_ambigious_diffs(ref_seq,
                                     var_id_list.append(var_id_)
                         if len(var_id_list) > 0:
                             part_alt_ht_str = '-'.join(var_id_list) + '-'
-                    part_alt_ht_str += ("%s-%d" % ('-'.join(part_alt_ht), cur_pos + seq_left))
+                    part_alt_ht_str += ("%s-%d" % ('-'.join(part_alt_ht), 
+                                                   cur_pos + seq_left))
                     right_alt_set.add(part_alt_ht_str)
                         
         if i_found:            
@@ -1650,7 +1732,8 @@ def identify_ambigious_diffs(ref_seq,
         if ht == "":
             continue
         if ht in ht_set_:
-            print(("Error: %s should not be in" % ht, ht_set_), file=sys.stderr)
+            print(("Error: %s should not be in" % ht, ht_set_), 
+                  file=sys.stderr)
 
             # DK - debugging purposes
             print("DK: cmp_list_range: [%d, %d]" % (cmp_left, cmp_right))
@@ -1675,19 +1758,29 @@ def identify_ambigious_diffs(ref_seq,
     
     return cmp_left, cmp_right, list(left_alt_set), list(right_alt_set)
 
-##################################################
-#   Nuance result parser
-##################################################
-
-def build_tree(vlist, tree, leaf):
+# --------------------------------------------------------------------------- #
+# Nuance result parser for EM results given an HLA-like allele format         #
+# Uses a tree structure to compress calls for mor accurate results            #
+# ex                                                                          #
+#   A*01:01:01:01  25%         \       A*01:01:01 - Partial 50%               #
+#   A*01:01:01:02  25%     ----->      A*02:01:01:01        50%               #
+#   A*02:01:01:01  50%         /                                              #
+# --------------------------------------------------------------------------- #
+def build_tree(vlist, 
+               tree, 
+               leaf):
     if len(vlist) == 0:
         return {'score' : leaf, 'children' : None}
 
     field = vlist[0]
     if field not in tree['children']:
-        tree['children'][field] = build_tree(vlist[1:], {'score' : 0, 'children' : {}}, leaf)
+        tree['children'][field] = build_tree(vlist[1:], 
+                                             {'score' : 0, 'children' : {}}, 
+                                             leaf)
     else:
-        tree['children'][field] = build_tree(vlist[1:], tree['children'][field], leaf)
+        tree['children'][field] = build_tree(vlist[1:], 
+                                             tree['children'][field], 
+                                             leaf)
 
     tree['score'] += leaf
     return tree
@@ -1731,7 +1824,11 @@ def call_nuance_results(nfile):
 
             allele, _, percent = line.split()
 
-            allele = allele.split('*')[-1].split(':')
-            datatree['Allele splitting'][gene] = build_tree(allele, datatree['Allele splitting'][gene], round(float(percent[:-1])/100,4))
+            allele   = allele.split('*')[-1].split(':')
+            tmp_tree = datatree['Allele splitting'][gene]
+            tmp_leaf = round(float(percent[:-1])/100,4)
+            datatree['Allele splitting'][gene] = build_tree(allele, 
+                                                            tmp_tree, 
+                                                            tmp_leaf)
 
     return datatree

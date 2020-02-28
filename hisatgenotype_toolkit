@@ -1,35 +1,46 @@
 #!/usr/bin/env python
-#
-# Copyright 2017, Daehwan Kim <infphilo@gmail.com>
-#
-# This file is part of HISAT-genotype.
-#
-# HISAT-genotype is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# HISAT-genotype is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.
-#
+# --------------------------------------------------------------------------- #
+# Copyright 2017, Daehwan Kim <infphilo@gmail.com>                            #
+#                                                                             #
+# This file is part of HISAT-genotype. Its purpose is as a wrapper for        #
+# secondary and individual scripts in HISATgenotype                           #
+#                                                                             #
+# HISAT-genotype is free software: you can redistribute it and/or modify      #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation, either version 3 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# HISAT-genotype is distributed in the hope that it will be useful,           #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.     #
+# --------------------------------------------------------------------------- #
 
-import sys, os, subprocess, re, resource
-import inspect, random
+import sys
+import os
+import subprocess
+import re 
+import resource
+import inspect
+import random
 import math
 from datetime import datetime, date, time
 from argparse import ArgumentParser, FileType
 import hisatgenotype_typing_common as typing_common
 
+# --------------------------------------------------------------------------- #
+# Main function for wrapper that contains all functions                       #
+# --------------------------------------------------------------------------- #
 if __name__ == '__main__':
+    # This step is critical for finding the scripts to run
     path = '/'.join(os.path.realpath(__file__).split('/')[:-1])
     path += '/hisatgenotype_tools/'
     if not os.path.exists(path):
-        print('Error! Toolkit Directory not found at %s' % path)
+        print('Error! Toolkit Directory not found at %s' % path,
+              file=sys.stderr)
         exit(1)
 
     scripts = []
@@ -47,12 +58,18 @@ if __name__ == '__main__':
                       help='Prints the exact script and options being run')
     subparser = parser.add_subparsers(title='Tools',
                                       dest='script',
-                                      help='HISAT-genotype tools and individual scripts')
+                                      help='HISAT-genotype tools and \
+                                                individual scripts')
 
     subparsers = []
     script_key = {}
     for itr in range(len(scripts)):
-        name = scripts[itr].replace('hisatgenotype_', '').replace('run_', '').replace('_', '-').split('.')[0]
+        # Need to strip the file name and get the core of the script name
+        name = scripts[itr]\
+            .replace('hisatgenotype_', '')\
+            .replace('run_', '')\
+            .replace('_', '-')\
+                .split('.')[0]
         script = scripts[itr]
 
         script_key.update({ name : script })
@@ -75,7 +92,8 @@ if __name__ == '__main__':
     elif args.script_help:
         cmd += additional + ['--help']
     elif args.script not in ['conc-results']:
-        print("Please provide options for tool selected", file=sys.stderr)
+        print("Please provide options for tool selected", 
+              file=sys.stderr)
         exit(1)    
 
     if args.see_script:

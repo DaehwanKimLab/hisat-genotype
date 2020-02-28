@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-
-#
+# --------------------------------------------------------------------------- #
 # Copyright 2015, Daehwan Kim <infphilo@gmail.com>
 #
 # This file is part of HISAT 2.
@@ -17,7 +16,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with HISAT 2.  If not, see <http://www.gnu.org/licenses/>.
-#
+# --------------------------------------------------------------------------- #
 
 import sys, os, subprocess, re, resource
 import inspect, random, glob
@@ -211,18 +210,7 @@ def extract_vars(base_fname,
         base_fullpath_name = "%s/%s" % (base_dname, base_fname)
 
     # Download human genome and HISAT2 index
-    HISAT2_fnames = ["grch38",
-                     "genome.fa",
-                     "genome.fa.fai"]
-
-    try: lock.acquire()
-    except: pass
-
-    if not typing_common.check_files(HISAT2_fnames):
-        typing_common.download_genome_and_index()
-
-    try: lock.release()
-    except: pass
+    typing_common.download_genome_and_index()
 
     # CB TODO: Make this read from a file or read the gen in the file name
     spliced_gene = ['hla', 'rbg']
