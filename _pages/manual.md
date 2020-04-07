@@ -59,7 +59,7 @@ Change the ~ to whichever directory you desire if this is not the behavior you w
 ```bash
 $ git clone https://github.com/DaehwanKimLab/hisat-genotype ~/hisat-genotype
 $ cd ~/hisat-genotype
-hisat-genotype$ git checkout hisatgenotype_v1.1.2_beta
+hisat-genotype$ git checkout hisatgenotype_v1.1.3
 $ make hisat2-align-s hisat2-build-s hisat2-inspect-s
 ```
 

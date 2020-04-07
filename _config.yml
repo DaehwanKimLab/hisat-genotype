@@ -116,3 +116,4 @@ exclude:
   - LICENSE
   - README.md
   - vendor
+  - hisat2
