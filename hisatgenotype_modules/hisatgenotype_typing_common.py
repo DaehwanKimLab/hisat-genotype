@@ -35,11 +35,11 @@ import hisatgenotype_typing_process as typing_process
 # --------------------------------------------------------------------------- #
 """ Wrapper for attempting to lock a function during multiprocessing """
 def locking(func):
-    def wrapper():
+    def wrapper(*args, **kwargs):
         try: lock.acquire()
         except: pass
 
-        func()
+        func(*args, **kwargs)
 
         try: lock.release()
         except: pass
@@ -412,12 +412,12 @@ def build_index_if_not_exists(base,
                     print("\tRunning:", ' '.join(build_cmd), 
                           file=sys.stderr)
                 proc = subprocess.Popen(build_cmd, 
-                                        stdout=open("/dev/null", 'w'), 
-                                        stderr=open("/dev/null", 'w'))
+                                        stdout = open("/dev/null", 'w'), 
+                                        stderr = open("/dev/null", 'w'))
                 proc.communicate()        
                 if not check_files(hisat2_graph_index_fnames):
-                    print("Error: indexing HLA failed! Perhaps, you \
-                                forgot to build hisat2 executables?", 
+                    print("Error: indexing HLA failed! Perhaps, you "\
+                                "forgot to build hisat2 executables?", 
                           file=sys.stderr)
                     sys.exit(1)
         # Build HISAT2 linear indexes based on the above information
@@ -430,8 +430,8 @@ def build_index_if_not_exists(base,
                              "%s_backbone.fa,%s_sequences.fa" % (base, base),
                              "%s.linear" % base]
                 proc = subprocess.Popen(build_cmd, 
-                                        stdout=open("/dev/null", 'w'), 
-                                        stderr=open("/dev/null", 'w'))
+                                        stdout = open("/dev/null", 'w'), 
+                                        stderr = open("/dev/null", 'w'))
                 proc.communicate()        
                 if not check_files(hisat2_linear_index_fnames):
                     print("Error: indexing HLA failed!", 
@@ -446,7 +446,7 @@ def build_index_if_not_exists(base,
             build_cmd = ["bowtie2-build",
                          "%s_backbone.fa,%s_sequences.fa" % (base, base),
                          base]
-            proc = subprocess.Popen(build_cmd, stdout=open("/dev/null", 'w'))
+            proc = subprocess.Popen(build_cmd, stdout = open("/dev/null", 'w'))
             proc.communicate()        
             if not check_files(bowtie2_index_fnames):
                 print("Error: indexing HLA failed!", 
@@ -464,10 +464,10 @@ def get_filename_match(fns):
             s = fileL[j]
             if s != fileR[j]:
                 if s not in "LR12":
-                    print("Potential Error: Paired-end mode is selected \
-                                and files %s and %s have an unexpected \
-                                character %s to mark left and right \
-                                pairings" % (fileL, fileR, s))
+                    print("Potential Error: Paired-end mode is selected "\
+                                "and files %s and %s have an unexpected "\
+                                "character %s to mark left and right "\
+                                "pairings" % (fileL, fileR, s))
                     
                     # We need to check the user is OK with the results
                     usr_input = ''
@@ -487,8 +487,8 @@ def get_filename_match(fns):
             common += s
 
         if not common:
-            print("Error matching files %s and %s. Names don't match. \
-                        Skipping inclusion" % (fileL, fileR))
+            print("Error matching files %s and %s. Names don't match. "\
+                        "Skipping inclusion" % (fileL, fileR))
             continue
 
         fnames.append(fileL)
@@ -698,12 +698,10 @@ def simulate_reads(seq_dic,         # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
             var_ids = []
             for var_id, allele_list in Links.items():
                 if allele_name in allele_list:
+                    assert var_id.startswith("hv")
                     var_ids.append(var_id)
 
-            def var_cmp(a, b):
-                assert a.startswith("hv") and b.startswith("hv")
-                return int(a[2:]) - int(b[2:])
-            var_ids = sorted(var_ids, cmp=var_cmp)
+            var_ids = sorted(var_ids, key = lambda x: int(x[2:]))
 
             # Build annotated sequence for the allele w.r.t backbone sequence
             add_pos = 0
@@ -836,14 +834,16 @@ def align_reads(aligner,
     if verbose >= 1:
         print(' '.join(aligner_cmd), file=sys.stderr)
     align_proc = subprocess.Popen(aligner_cmd,
-                                  stdout=subprocess.PIPE,
-                                  stderr=open("/dev/null", 'w'))
+                                  universal_newlines = True,
+                                  stdout = subprocess.PIPE,
+                                  stderr = open("/dev/null", 'w'))
    
     sambam_cmd = ["samtools", "view", "-bS", "-"]
     sambam_proc = subprocess.Popen(sambam_cmd,
-                                   stdin=align_proc.stdout,
-                                   stdout=open(out_fname + ".unsorted", 'w'),
-                                   stderr=open("/dev/null", 'w'))
+                                   universal_newlines = True,
+                                   stdin  = align_proc.stdout,
+                                   stdout = open(out_fname + ".unsorted", 'w'),
+                                   stderr = open("/dev/null", 'w'))
     sambam_proc.communicate()
     
     bamsort_cmd = ["samtools", "sort", out_fname + ".unsorted", "-o", out_fname]
@@ -853,7 +853,7 @@ def align_reads(aligner,
 
     bamindex_cmd = ["samtools", "index", out_fname]
     bamindex_proc = subprocess.Popen(bamindex_cmd,
-                                        stderr=open("/dev/null", 'w'))
+                                     stderr=open("/dev/null", 'w'))
     bamindex_proc.communicate()
 
     os.system("rm %s" % (out_fname + ".unsorted"))
@@ -870,14 +870,16 @@ def get_mpileup(alignview_cmd,
         mpileup.append([[], {}])
         
     proc = subprocess.Popen(alignview_cmd,
-                            stdout=subprocess.PIPE,
-                            stderr=open("/dev/null", 'w'))
+                            universal_newlines = True,
+                            stdout = subprocess.PIPE,
+                            stderr = open("/dev/null", 'w'))
 
     prev_pos = -1
     cigar_re = re.compile('\d+\w')
     for line in proc.stdout:
         line = line.strip()
         cols = line.split()
+
         read_id, flag, _, pos, _, cigar_str = cols[:6]
         read_seq = cols[9]
         flag, pos = int(flag), int(pos)
@@ -991,13 +993,15 @@ def get_pair_interdist(alignview_cmd,
                        simulation,
                        verbose):
     bamview_proc = subprocess.Popen(alignview_cmd,
-                                    stdout=subprocess.PIPE,
-                                    stderr=open("/dev/null", 'w'))
+                                    universal_newlines = True,
+                                    stdout = subprocess.PIPE,
+                                    stderr = open("/dev/null", 'w'))
     sort_read_cmd = ["sort", "-k", "1,1", "-s"] # -s for stable sorting
     alignview_proc = subprocess.Popen(sort_read_cmd,
-                                      stdin=bamview_proc.stdout,
-                                      stdout=subprocess.PIPE,
-                                      stderr=open("/dev/null", 'w'))
+                                      universal_newlines = True,
+                                      stdin  = bamview_proc.stdout,
+                                      stdout = subprocess.PIPE,
+                                      stderr = open("/dev/null", 'w'))
 
     dist_list = []
     prev_read_id = None
@@ -1203,7 +1207,7 @@ def single_abundance(Gene_cmpt,
     else:
         normalize(Gene_prob)
     Gene_prob = [[allele, prob] for allele, prob in Gene_prob.items()]
-    Gene_prob = sorted(Gene_prob, key = lambda x: x[1])
+    Gene_prob = sorted(Gene_prob, key = lambda x: x[1], reverse=True)
     return Gene_prob
 
 
@@ -1238,7 +1242,7 @@ def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATA...
         elif var_type == "insertion":
             var_pos += 1
         rev_Var_list.append([var_pos, var_id])
-    rev_Var_list = sorted(rev_Var_list, key = lambda a, b: a[0] - b[0])
+    rev_Var_list = sorted(rev_Var_list, key = lambda x: x[0])
 
     def nextbases(haplotype,
                   left = True,

@@ -290,9 +290,9 @@ def typing(simulation,
         msg_out = [report_file]
     
     # Add version and command info to all report files
-    version_dir = '/'.join(os.path.dirname(__file__).split('/')[:-1]) + '/VERSION'
+    version_dir = '/'.join(os.path.dirname(__file__).split('/')[:-1])
     hg_version = open(version_dir + '/VERSION', 'r').read()
-    h2_version = open(version_dir + 'hisat2/VERSION', 'r').read()
+    h2_version = open(version_dir + '/hisat2/VERSION', 'r').read()
 
     cmd_call = ' '.join(sys.argv)
 
@@ -431,18 +431,21 @@ def typing(simulation,
                     pair_interdist = None
 
                 bamview_proc = subprocess.Popen(alignview_cmd,
-                                                stdout=subprocess.PIPE,
-                                                stderr=open("/dev/null", 'w'))
+                                                universal_newlines = True,
+                                                stdout = subprocess.PIPE,
+                                                stderr = open("/dev/null", 'w'))
 
                 sort_read_cmd = ["sort", "-k", "1,1", "-s"] # -s for stable sorting
                 alignview_proc = subprocess.Popen(sort_read_cmd,
-                                                  stdin=bamview_proc.stdout,
-                                                  stdout=subprocess.PIPE,
-                                                  stderr=open("/dev/null", 'w'))
+                                                  universal_newlines = True,
+                                                  stdin  = bamview_proc.stdout,
+                                                  stdout = subprocess.PIPE,
+                                                  stderr = open("/dev/null", 'w'))
             else:
                 alignview_proc = subprocess.Popen(alignview_cmd,
-                                             stdout=subprocess.PIPE,
-                                             stderr=open("/dev/null", 'w'))
+                                                  universal_newlines = True,
+                                                  stdout = subprocess.PIPE,
+                                                  stderr = open("/dev/null", 'w'))
 
             # List of nodes that represent alleles
             allele_vars = {}
@@ -566,7 +569,7 @@ def typing(simulation,
                     else:
                         pos = int(haplotype.split('-')[0])
                     haplotype_list.append([pos, haplotype])
-                return sorted(haplotype_list, cmp = lambda a, b: a[0] - b[0])
+                return sorted(haplotype_list, key = lambda x: x[0])
 
             Alts_left_list  = haplotype_alts_list(Alts_left, True)
             Alts_right_list = haplotype_alts_list(Alts_right, False)
@@ -776,12 +779,19 @@ def typing(simulation,
                     line = line.strip()
                     cols = line.split()
                     read_id, flag, chr, pos, mapQ, cigar_str = cols[:6]
+
+                    ### TODO CB DEBUG
+                    if read_id == "507|R_2339_99M2D1M_32|S|hv5675,34|S|hv5681,29|S|hv5686,1|D|hv5687":
+                        print("HERE")
+
                     node_read_id = orig_read_id = read_id
                     if simulation:
                         read_id = read_id.split('|')[0]
-                    read_seq, read_qual = cols[9], cols[10]
-                    flag, pos = int(flag), int(pos)
-                    pos -= (base_locus + 1)
+                    read_seq  = cols[9]
+                    read_qual = cols[10]
+                    flag      = int(flag)
+                    pos       = int(pos)
+                    pos      -= (base_locus + 1)
                     if pos < 0:
                         continue
 
@@ -845,30 +855,33 @@ def typing(simulation,
 
                     if Zs:
                         Zs_str = Zs
-                        Zs = Zs.split(',')             
+                        Zs     = Zs.split(',')             
 
                     assert MD != ""
-                    MD_str_pos, MD_len = 0, 0
-                    Zs_pos, Zs_i = 0, 0
+                    MD_str_pos = 0
+                    MD_len     = 0
+                    Zs_pos     = 0
+                    Zs_i       = 0
                     for _i in range(len(Zs)):
-                        Zs[_i] = Zs[_i].split('|')
+                        Zs[_i]    = Zs[_i].split('|')
                         Zs[_i][0] = int(Zs[_i][0])
                     if Zs_i < len(Zs):
                         Zs_pos += Zs[Zs_i][0]
-                    read_pos, left_pos = 0, pos
+                    read_pos  = 0
+                    left_pos  = pos
                     right_pos = left_pos
-                    cigars = cigar_re.findall(cigar_str)
-                    cigars = [[cigar[-1], int(cigar[:-1])] for cigar in cigars]
-                    cmp_list = []
+                    cigars    = cigar_re.findall(cigar_str)
+                    cigars    = [[cigar[-1], int(cigar[:-1])] for cigar in cigars]
+                    cmp_list  = []
                     num_error_correction = 0
-                    likely_misalignment = False
+                    likely_misalignment  = False
 
                     # Extract variants w.r.t backbone from CIGAR string
                     softclip = [0, 0]
                     for i in range(len(cigars)):
                         cigar_op, length = cigars[i]
                         if cigar_op == 'M':
-                            first = True
+                            first       = True
                             MD_len_used = 0
                             cmp_list_i = len(cmp_list)
                             while True:
@@ -891,8 +904,8 @@ def typing(simulation,
                                                          right_pos + MD_len_used, 
                                                          length - MD_len_used])
                                     break
-                                first = False
-                                read_base = read_seq[read_pos + MD_len]
+                                first       = False
+                                read_base   = read_seq[read_pos + MD_len]
                                 MD_ref_base = MD[MD_str_pos]
                                 MD_str_pos += 1
                                 assert MD_ref_base in "ACGT"
@@ -905,7 +918,7 @@ def typing(simulation,
                                 if read_pos + MD_len == Zs_pos and Zs_i < len(Zs):
                                     assert Zs[Zs_i][1] == 'S'
                                     _var_id = Zs[Zs_i][2]
-                                    Zs_i += 1
+                                    Zs_i   += 1
                                     Zs_pos += 1
                                     if Zs_i < len(Zs):
                                         Zs_pos += Zs[Zs_i][0]
@@ -929,7 +942,9 @@ def typing(simulation,
 
                                 cmp_list.append(["mismatch", 
                                                  right_pos + MD_len, 
-                                                 1, _var_id])
+                                                 1, 
+                                                 _var_id])
+                                
                                 MD_len_used = MD_len + 1
                                 MD_len += 1
                                 # Full match
@@ -941,7 +956,10 @@ def typing(simulation,
                             # update for cmp_list
                             if error_correction:
                                 assert cmp_list_i < len(cmp_list)
-                                new_cmp_list, read_seq, _num_error_correction \
+                                name_readID = "aHSQ1008:175:C0JVFACXX:5:1109:17665:21583|L"
+                                new_cmp_list, \
+                                  read_seq, \
+                                  _num_error_correction \
                                     = error_correct(ref_seq,
                                                     read_seq,
                                                     read_pos,
@@ -949,7 +967,7 @@ def typing(simulation,
                                                     gene_vars,
                                                     gene_var_list,
                                                     cmp_list[cmp_list_i:],
-                                                    node_read_id == "aHSQ1008:175:C0JVFACXX:5:1109:17665:21583|L")
+                                                    node_read_id == name_readID)
                                 cmp_list = cmp_list[:cmp_list_i] + new_cmp_list
                                 num_error_correction += _num_error_correction
 
@@ -1103,7 +1121,7 @@ def typing(simulation,
                                     assert type_ == "insertion"
                                     data_ = read_seq[read_pos:read_pos + length_]
                                 if add:
-                                    if type_ != "missmatch":
+                                    if type_ != "mismatch":
                                         type_add = type_
                                     else:
                                         type_add = "single"
@@ -1608,7 +1626,7 @@ def typing(simulation,
                     add_alleles(alleles)
 
             Gene_counts = [[allele, count] for allele, count in Gene_counts.items()]
-            Gene_counts = sorted(Gene_counts, key = lambda x: x[1])
+            Gene_counts = sorted(Gene_counts, key = lambda x: x[1], reverse = True)
             for count_i in range(len(Gene_counts)):
                 count = Gene_counts[count_i]
                 if simulation:
@@ -1686,7 +1704,7 @@ def typing(simulation,
                         )
                         Gene_prob \
                             = exon_prob \
-                                = sorted(exon_prob, key = lambda x: x[1])
+                                = sorted(exon_prob, key = lambda x: x[1], reverse=True)
                 else:
                     # Incorporate representative alleles for exons
                     Gene_prob \
@@ -1739,7 +1757,7 @@ def typing(simulation,
                     Gene_prob = list(
                         [allele, prob] for allele, prob in Gene_combined_prob.items()
                     )
-                    Gene_prob = sorted(Gene_prob, key = lambda x: x[1])
+                    Gene_prob = sorted(Gene_prob, key = lambda x: x[1], reverse=True)
             else:
                 if len(Gene_cmpt.keys()) <= 1:
                     Gene_prob = []
@@ -1990,7 +2008,7 @@ def typing(simulation,
                     min_mismatches = sys.maxsize
                     for max_allele_name in max_allele_names:
                         cmp_vars = allele_vars[max_allele_name]
-                        cmp_vars.sort(key=lambda a, b: int(a[2:]) - int(b[2:]))
+                        cmp_vars.sort(key=lambda x: int(x[2:]))
                         
                         _, _, tmp_mismatches = compare_alleles(cmp_vars, 
                                                                node_vars, 
@@ -2093,8 +2111,9 @@ def read_backbone_alleles(genotype_genome, refGene_loci, Genes):
 
         length = right - left + 1
         proc = subprocess.Popen(seq_extract_cmd, 
-                                stdout=subprocess.PIPE, 
-                                stderr=open("/dev/null", 'w'))
+                                universal_newlines = True,
+                                stdout = subprocess.PIPE, 
+                                stderr = open("/dev/null", 'w'))
         seq = ""
         for line in proc.stdout:
             line = line.strip()
@@ -2112,7 +2131,7 @@ def read_Gene_alleles_from_vars(Vars, Var_list, Links, Genes):
     for gene_name in Genes:
         # Assert there is only one allele per gene, which is a backbone allele
         assert len(Genes[gene_name]) == 1
-        backbone_allele_name, backbone_seq = Genes[gene_name].items()[0]
+        backbone_allele_name, backbone_seq = list(Genes[gene_name].items())[0]
         gene_vars     = Vars[gene_name]
         gene_var_list = Var_list[gene_name]
         allele_vars   = {}
@@ -2442,7 +2461,7 @@ def genotyping_locus(base_fname,
                 if str(test_i + 1) not in test_ids:
                     continue
 
-            print >> sys.stderr, "Test %d" % (test_i + 1), str(datetime.now())
+            print("Test %d" % (test_i + 1), str(datetime.now()), file=sys.stderr)
             test_locus_list = test_list[test_i]
             num_frag_list = typing_common.simulate_reads(Genes,
                                                          base_fname,
