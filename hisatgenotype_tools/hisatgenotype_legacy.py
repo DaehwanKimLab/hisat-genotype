@@ -1,26 +1,29 @@
 #!/usr/bin/env python
+# --------------------------------------------------------------------------- #
+# Copyright 2017, Daehwan Kim <infphilo@gmail.com>                            #
+#                                                                             #
+# This file is part of HISAT-genotype. Legacy version of the original         #
+# HISAT-genotype                                                              #
+#                                                                             #
+# HISAT-genotype is free software: you can redistribute it and/or modify      #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation, either version 3 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# HISAT-genotype is distributed in the hope that it will be useful,           #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.     #
+# --------------------------------------------------------------------------- #
 
-#
-# Copyright 2017, Daehwan Kim <infphilo@gmail.com>
-#
-# This file is part of HISAT-genotype.
-#
-# HISAT-genotype is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# HISAT-genotype is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.
-#
-
-
-import sys, os, subprocess, re, resource
+import sys
+import os
+import subprocess 
+import re
+import resource
 import inspect, random
 import math
 from datetime import datetime, date, time
@@ -28,9 +31,9 @@ from argparse import ArgumentParser, FileType
 import hisatgenotype_typing_common as typing_common
 
 
-"""
-Align reads, and sort the alignments into a BAM file
-"""
+# --------------------------------------------------------------------------- #
+# Align reads, and sort the alignments into a BAM file                        #
+# --------------------------------------------------------------------------- #
 def align_reads(base_fname,
                 read_fnames,
                 fastq,
@@ -57,11 +60,15 @@ def align_reads(base_fname,
 
     out_base_fname = read_fnames[0].split('/')[-1].split('.')[0]
 
-    print("%s Aligning %s to %s ..." % (str(datetime.now()), ' '.join(read_fnames), base_fname), file=sys.stderr)
+    print("%s Aligning %s to %s ..." 
+            % (str(datetime.now()), ' '.join(read_fnames), base_fname), 
+          file=sys.stderr)
     if verbose:
-        print("\t%s" % (' '.join(aligner_cmd)), file=sys.stderr)
+        print("\t%s" % (' '.join(aligner_cmd)), 
+              file=sys.stderr)
 
     align_proc = subprocess.Popen(aligner_cmd,
+                                  universal_newlines=True,
                                   stdout=subprocess.PIPE,
                                   stderr=open("/dev/null", 'w'))
 
@@ -78,7 +85,8 @@ def align_reads(base_fname,
     # Increase the maximum number of files that can be opened
     resource.setrlimit(resource.RLIMIT_NOFILE, (10000, 10240))
     
-    print("%s Sorting %s ..." % (str(datetime.now()), unsorted_bam_fname), file=sys.stderr)
+    print("%s Sorting %s ..." % (str(datetime.now()), unsorted_bam_fname), 
+          file=sys.stderr)
     bam_fname = "%s.bam" % out_base_fname
     bamsort_cmd = ["samtools",
                    "sort",
@@ -87,7 +95,8 @@ def align_reads(base_fname,
                    unsorted_bam_fname,
                    "-o", bam_fname]    
     if verbose:
-        print("\t%s" % ' '.join(bamsort_cmd), file=sys.stderr)
+        print("\t%s" % ' '.join(bamsort_cmd), 
+              file=sys.stderr)
     bamsort_proc = subprocess.call(bamsort_cmd)
     os.remove(unsorted_bam_fname)
 
@@ -96,12 +105,10 @@ def align_reads(base_fname,
     
     return bam_fname
 
-
-"""
-"""
 def index_bam(bam_fname,
               verbose):
-    print("%s Indexing %s ..." % (str(datetime.now()), bam_fname), file=sys.stderr)
+    print("%s Indexing %s ..." % (str(datetime.now()), bam_fname), 
+          file=sys.stderr)
     bamindex_cmd = ["samtools",
                     "index",
                     bam_fname]
@@ -109,9 +116,6 @@ def index_bam(bam_fname,
         print("\t%s" % ' '.join(bamindex_cmd), file=sys.stderr)
     bamindex_proc = subprocess.call(bamindex_cmd)
 
-
-"""
-"""
 def extract_reads(bam_fname,
                   chr,
                   left,
@@ -157,20 +161,28 @@ def extract_reads(bam_fname,
             gzip_proc.stdin.write(">%s\n" % prev_read_name)
             gzip_proc.stdin.write("%s\n" % seq)                    
 
-    bamview_cmd = ["samtools", "view", bam_fname, "%s:%d-%d" % (chr, left+1, right+1)]
+    bamview_cmd = ["samtools", 
+                   "view", 
+                   bam_fname, 
+                   "%s:%d-%d" % (chr, left+1, right+1)]
     if verbose:
-        print("\t%s" % ' '.join(bamview_cmd), file=sys.stderr)
+        print("\t%s" % ' '.join(bamview_cmd), 
+              file=sys.stderr)
     bamview_proc = subprocess.Popen(bamview_cmd,
                                     stdout=subprocess.PIPE,
                                     stderr=open("/dev/null", 'w'))
 
     sort_read_cmd = ["sort", "-k", "1,1", "-s"] # -s for stable sorting
     alignview_proc = subprocess.Popen(sort_read_cmd,
-                                      stdin=bamview_proc.stdout,
-                                      stdout=subprocess.PIPE,
-                                      stderr=open("/dev/null", 'w'))
+                                      universal_newlines=True,
+                                      stdin  = bamview_proc.stdout,
+                                      stdout = subprocess.PIPE,
+                                      stderr = open("/dev/null", 'w'))
 
-    prev_read_name, extract_read, read1, read2 = "", False, [], []
+    prev_read_name = ""
+    extract_read   = False
+    read1          = []
+    read2          = []
     for line in alignview_proc.stdout:
         if line.startswith('@'):
             continue
@@ -179,7 +191,8 @@ def extract_reads(bam_fname,
         read_name, flag, chr, pos, mapQ, cigar, _, _, _, read, qual = cols[:11]
         flag, pos = int(flag), int(pos)
         strand = '-' if flag & 0x10 else '+'                   
-        AS, NH = "", ""
+        AS = ""
+        NH = ""
         for i in range(11, len(cols)):
             col = cols[i]
             if col.startswith("AS"):
@@ -198,7 +211,10 @@ def extract_reads(bam_fname,
                         write_read(gzip2_proc, prev_read_name, read2[0], read2[1])
                 else:                    
                     write_read(gzip1_proc, prev_read_name, read1[0], read1[1])
-            prev_read_name, extract_read, read1, read2 = read_name, False, [], []
+            prev_read_name = read_name
+            extract_read   = False
+            read1          = []
+            read2          = []
 
         if NH == 1:
             extract_read = True
@@ -230,9 +246,9 @@ def extract_reads(bam_fname,
 
     return read_fnames
 
-
-"""
-"""
+# --------------------------------------------------------------------------- #
+# Main genotyping functions                                                   #
+# --------------------------------------------------------------------------- #
 def perform_genotyping(base_fname,
                        database,
                        locus_list,
@@ -275,8 +291,6 @@ def perform_genotyping(base_fname,
     genotype_proc.communicate()
         
 
-"""
-"""
 def genotype(base_fname,
              target_region_list,
              fastq,
@@ -300,33 +314,38 @@ def genotype(base_fname,
     # hisat2 graph index files
     genotype_fnames += ["%s.%d.ht2" % (base_fname, i+1) for i in range(8)]
     if not typing_common.check_files(genotype_fnames):
-        print("Error: some of the following files are missing!", file=sys.stderr)
+        print("Error: some of the following files are missing!", 
+              file=sys.stderr)
         for fname in genotype_fnames:
-            print("\t%s" % fname, file=sys.stderr)
+            print("\t%s" % fname, 
+                  file=sys.stderr)
         sys.exit(1)
 
     # Read region alleles (names and sequences)
-    regions, region_loci = {}, {}
+    regions     = {}
+    region_loci = {}
     for line in open("%s.locus" % base_fname):
         family, allele_name, chr, left, right = line.strip().split()[:5]
         family = family.lower()
-        if len(target_region_list) > 0 and \
-           family not in target_region_list:
+        if len(target_region_list) > 0 \
+                and family not in target_region_list:
             continue
         
         locus_name = allele_name.split('*')[0]
-        if family in target_region_list and \
-           len(target_region_list[family]) > 0 and \
-           locus_name not in target_region_list[family]:
+        if family in target_region_list \
+                and len(target_region_list[family]) > 0 \
+                and locus_name not in target_region_list[family]:
             continue
         
-        left, right = int(left), int(right)
+        left  = int(left)
+        right = int(right)
         if family not in region_loci:
             region_loci[family] = []
         region_loci[family].append([locus_name, allele_name, chr, left, right])
 
     if len(region_loci) <= 0:
-        print("Warning: no region exists!", file=sys.stderr)
+        print("Warning: no region exists!", 
+              file=sys.stderr)
         sys.exit(1)
 
     # Align reads, and sort the alignments into a BAM file
@@ -348,8 +367,9 @@ def genotype(base_fname,
         for locus_name, allele_name, chr, left, right in loci:
             out_read_fname = "%s.%s" % (family, locus_name)
             if verbose:
-                print("\tExtracting reads beloning to %s-%s ..." % \
-                    (family, locus_name), file=sys.stderr)
+                print("\tExtracting reads beloning to %s-%s ..." \
+                        % (family, locus_name), 
+                      file=sys.stderr)
 
             extracted_read_fnames = extract_reads(alignment_fname,
                                                   chr,
@@ -373,10 +393,9 @@ def genotype(base_fname,
                                debug)
         print("\n", file=sys.stderr)
 
-    
-                
-"""
-"""
+# --------------------------------------------------------------------------- #
+# Main function for script                                                    #
+# --------------------------------------------------------------------------- #
 if __name__ == '__main__':
     parser = ArgumentParser(
         description='HISAT-genotype')
@@ -423,7 +442,8 @@ if __name__ == '__main__':
                         dest="num_editdist",
                         type=int,
                         default=2,
-                        help="Maximum number of mismatches per read alignment to be considered (default: 2)")
+                        help="Maximum number of mismatches per read alignment "\
+                                "to be considered (default: 2)")
     parser.add_argument('--assembly',
                         dest='assembly',
                         action='store_true',
@@ -440,7 +460,8 @@ if __name__ == '__main__':
                         dest="debug",
                         type=str,
                         default="",
-                        help="Test database or code (options: basic, pair, full, single-end, test_list, test_id)(e.g., test_id:10,basic)")
+                        help="Test database or code (options: basic, pair, full, "\
+                                "single-end, test_list, test_id)(e.g., test_id:10,basic)")
 
     args = parser.parse_args()
     region_list = {}
@@ -448,7 +469,8 @@ if __name__ == '__main__':
         for region in args.region_list.split(','):
             region = region.split('.')
             if len(region) < 1 or len(region) > 2:
-                print("Error: --region-list is incorrectly formatted.", file=sys.stderr)
+                print("Error: --region-list is incorrectly formatted.", 
+                      file=sys.stderr)
                 sys.exit(1)
                 
             family = region[0].lower()
@@ -462,12 +484,14 @@ if __name__ == '__main__':
     read_fnames = []
     if args.alignment_fname != "":
         if not os.path.exists(args.alignment_fname):
-            print("Error: %s does not exist." % args.alignment_fname, file=sys.stderr)
+            print("Error: %s does not exist." % args.alignment_fname, 
+                  file=sys.stderr)
     elif args.read_fname_U != "":
         read_fnames = [args.read_fname_U]
     else:
         if args.read_fname_1 == "" or args.read_fname_2 == "":
-            print("Error: please specify read file names correctly: -U or -1 and -2", file=sys.stderr)
+            print("Error: please specify read file names correctly: -U or -1 and -2", 
+                  file=sys.stderr)
             sys.exit(1)
         read_fnames = [args.read_fname_1, args.read_fname_2]
 

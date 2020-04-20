@@ -297,13 +297,13 @@ def typing(simulation,
     cmd_call = ' '.join(sys.argv)
 
     for f_ in msg_out:
-        print("# VERSIONS:\n", 
+        print("# VERSIONS:", 
               file=f_)
-        print("# HISAT2 - %s\n" % h2_version, 
+        print("# HISAT2 - %s" % h2_version, 
               file=f_)
-        print("# HISAT-genotype - %s\n" % hg_version, 
+        print("# HISAT-genotype - %s" % hg_version, 
               file=f_)
-        print("# Database - %s\n" % dbversion, 
+        print("# Database - %s" % dbversion, 
               file=f_)
         print("# COMMAND:\n%s" % cmd_call, 
               file=f_)
@@ -2251,9 +2251,9 @@ def genotyping_locus(base_fname,
         # Check if the pre-existing files (hla*) are compatible with the current
         # parameter setting
         if os.path.exists("%s.locus" % base_fname):
-            left = 0
+            left       = 0
             Gene_genes = []
-            BACKBONE = False
+            BACKBONE   = False
             for line in open("%s.locus" % base_fname):
                 Gene_name = line.strip().split()[0]
                 if Gene_name.find("BACKBONE") != -1:
@@ -2365,6 +2365,8 @@ def genotyping_locus(base_fname,
     # Get database version if exsists
     if os.path.exists(genome_name + ".version"):
         dbversion = open(genome_name + ".version", 'r').read()
+    else:
+        dbversion = "NONE"
     
     if len(locus_list) == 0:
         locus_list = refGene_loci.keys()

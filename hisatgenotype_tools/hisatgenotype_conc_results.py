@@ -1,28 +1,35 @@
 #!/usr/bin/env python
-#
-# Copyright 2019, Christopher Bennett <christopher@bennett-tech.dev>
-#
-# This file is part of HISAT-genotype.
-#
-# HISAT-genotype is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# HISAT-genotype is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.
-#
+# --------------------------------------------------------------------------- #
+# Copyright 2019, Christopher Bennett <christopher@bennett-tech.dev>          #
+#                                                                             #
+# This file is part of HISAT-genotype. This script concatinates results into  #
+# a more workable format for end users                                        #
+#                                                                             #
+# HISAT-genotype is free software: you can redistribute it and/or modify      #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation, either version 3 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# HISAT-genotype is distributed in the hope that it will be useful,           #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.     #
+# --------------------------------------------------------------------------- #
 
-import os, sys, glob
+import os
+import sys
+import glob
 from argparse import ArgumentParser
 import hisatgenotype_typing_common as typing_common
 import hisatgenotype_args as hg_args
 
+
+# --------------------------------------------------------------------------- #
+# Function to flatten a tree into an array                                    #
+# --------------------------------------------------------------------------- #
 def flatten(tree, prev_key = '', sep = '*'):
     items = []
     for key, value in tree.items():
@@ -36,8 +43,13 @@ def flatten(tree, prev_key = '', sep = '*'):
     if sep == ":":
         return dict(items)
     else:
-        return sorted(items, key=lambda tup : (tup[1], len(tup[0].split()[0])), reverse = True)
+        return sorted(items, 
+                      key=lambda tup : (tup[1], len(tup[0].split()[0])), 
+                      reverse = True)
 
+# --------------------------------------------------------------------------- #
+#   Main Function                                                             #
+# --------------------------------------------------------------------------- #
 if __name__ == '__main__':
     parser = ArgumentParser(
         description='Script for simplifying HISAT-genotype results')
@@ -76,14 +88,19 @@ if __name__ == '__main__':
                     if collab not in genecol:
                         genecol.append(collab)                    
 
-                    print('\t\tGene: %s (score: %.2f)' % (gene, tree[gene]['score']))
+                    print('\t\tGene: %s (score: %.2f)' \
+                            % (gene, tree[gene]['score']))
                     flattened_tree = flatten(tree[gene]['children'], gene)
 
                     pastv, pastn = 0, ''
                     report_line = ''
                     for tup in flattened_tree:
-                        # This is to filter out any missilaneous partial alleles with similar score to parent (ex remove A*01 - Partial 50% if A*01:01:01:01 50%)
-                        if tup[1] < 0.2 or (pastv == tup[1] and "Partial" in tup[0]): 
+                        # This is to filter out any missilaneous 
+                        # partial alleles with similar score to parent 
+                        # (ex remove A*01 - Partial 50% if A*01:01:01:01 50%)
+                        if tup[1] < 0.2 \
+                                or (pastv == tup[1] \
+                                and "Partial" in tup[0]): 
                             continue
 
                         result_str = '%s (score: %.4f)' % (tup[0], tup[1])

@@ -1,26 +1,28 @@
 #!/usr/bin/env python
+# --------------------------------------------------------------------------- #
+# Copyright 2017, Daehwan Kim <infphilo@gmail.com>                            #
+#                                                                             #
+# This file is part of HISAT-genotype. This converts codis data to a format   #
+# for use in HISAT-genotype                                                   #
+#                                                                             #
+# HISAT-genotype is free software: you can redistribute it and/or modify      #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation, either version 3 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# HISAT-genotype is distributed in the hope that it will be useful,           #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.     #
+# --------------------------------------------------------------------------- #
 
-#
-# Copyright 2017, Daehwan Kim <infphilo@gmail.com>
-#
-# This file is part of HISAT-genotype.
-#
-# HISAT-genotype is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# HISAT-genotype is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.
-#
-
-
-import os, sys, subprocess, re
+import os
+import sys
+import subprocess
+import re
 import inspect, operator
 from copy import deepcopy
 from argparse import ArgumentParser, FileType
@@ -32,31 +34,40 @@ except ImportError:
     print("Error: please install openpyxl by running 'pip install openpyxl'.", file=sys.stderr)
     sys.exit(1)
 
-
-# sequences for DNA fingerprinting loci are available at http://www.cstl.nist.gov/biotech/strbase/seq_ref.htm
-
+# --------------------------------------------------------------------------- #
+# Global settings                                                             #
+# --------------------------------------------------------------------------- #
+""" 
+sequences for DNA fingerprinting loci are available at 
+http://www.cstl.nist.gov/biotech/strbase/seq_ref.htm
+"""
 orig_CODIS_seq = {
     "CSF1PO" :
     # http://www.cstl.nist.gov/biotech/strbase/str_CSF1PO.htm
     # allele 13: 5:150076172-150076490 - (samtools faidx genome.fa - GRCh38)
     ["[AGAT]13",
-     "AACCTGAGTCTGCCAAGGACTAGCAGGTTGCTAACCACCCTGTGTCTCAGTTTTCCTACCTGTAAAATGAAGATATTAACAGTAACTGCCTTCATAGATAGAAGATAGATAGATT", # left flanking sequence
+     "AACCTGAGTCTGCCAAGGACTAGCAGGTTGCTAACCACCCTGTGTCTCAGTTTTCCTACCTGTAAAA"\
+         "TGAAGATATTAACAGTAACTGCCTTCATAGATAGAAGATAGATAGATT", # left flanking sequence
      "AGATAGATAGATAGATAGATAGATAGATAGATAGATAGATAGATAGATAGAT", # STR
-     "AGGAAGTACTTAGAACAGGGTCTGACACAGGAAATGCTGTCCAAGTGTGCACCAGGAGATAGTATCTGAGAAGGCTCAGTCTGGCACCATGTGGGTTGGGTGGGAACCTGGAGGCTGGAGAATGGGCTGAAGATGGCCAGTGGTGTGTGGAA"], # right flanking sequence
+     "AGGAAGTACTTAGAACAGGGTCTGACACAGGAAATGCTGTCCAAGTGTGCACCAGGAGATAGTATCTG"\
+         "AGAAGGCTCAGTCTGGCACCATGTGGGTTGGGTGGGAACCTGGAGGCTGGAGAATGGGCTGAAGA"\
+         "TGGCCAGTGGTGTGTGGAA"], # right flanking sequence
              
     "FGA" :
     # http://www.cstl.nist.gov/biotech/strbase/str_FGA.htm
     # allele 22: 4:154587696-154587891 -
     ["[TTTC]3TTTTTTCT[CTTT]14CTCC[TTCC]2",
      "GCCCCATAGGTTTTGAACTCACAGATTAAACTGTAACCAAAATAAAATTAGGCATATTTACAAGCTAG",
-     "TTTCTTTCTTTCTTTTTTCTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTCCTTCCTTCC",
+     "TTTCTTTCTTTCTTTTTTCTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCTTTCT"\
+         "TTCTTTCTCCTTCCTTCC",
      "TTTCTTCCTTTCTTTTTTGCTGGCAATTACAGACAAATCA"],
 
     "TH01" :
     # http://www.cstl.nist.gov/biotech/strbase/str_TH01.htm
     # allele 7: 11:2170990-2171176 +
     ["[AATG]7",
-     "GTGGGCTGAAAAGCTCCCGATTATCCAGCCTGGCCCACACAGTCCCCTGTACACAGGGCTTCCGAGTGCAGGTCACAGGGAACACAGACTCCATGGTG",
+     "GTGGGCTGAAAAGCTCCCGATTATCCAGCCTGGCCCACACAGTCCCCTGTACACAGGGCTTCCGAGTGCAG"\
+         "GTCACAGGGAACACAGACTCCATGGTG",
      "AATGAATGAATGAATGAATGAATGAATG",
      "AGGGAAATAAGGGAGGAACAGGCCAATGGGAATCACCCCAGAGCCCAGATACCCTTTGAAT"],
              
@@ -66,7 +77,9 @@ orig_CODIS_seq = {
     ["[AATG]8",
      "ACTGGCACAGAACAGGCACTTAGGGAACCCTCACTG",
      "AATGAATGAATGAATGAATGAATGAATGAATG",
-     "TTTGGGCAAATAAACGCTGACAAGGACAGAAGGGCCTAGCGGGAAGGGAACAGGAGTAAGACCAGCGCACAGCCCGACTTGTGTTCAGAAGACCTGGGATTGGACCTGAGGAGTTCAATTTTGGATGAATCTCTTAATTAACCTGTGGGGTTCCCAGTTCCTCC"],
+     "TTTGGGCAAATAAACGCTGACAAGGACAGAAGGGCCTAGCGGGAAGGGAACAGGAGTAAGACCAGCGCACAGC"\
+         "CCGACTTGTGTTCAGAAGACCTGGGATTGGACCTGAGGAGTTCAATTTTGGATGAATCTCTTAATTAACC"\
+         "TGTGGGGTTCCCAGTTCCTCC"],
              
     "VWA" :
     # http://www.cstl.nist.gov/biotech/strbase/str_VWA.htm
@@ -96,9 +109,11 @@ orig_CODIS_seq = {
     # http://www.cstl.nist.gov/biotech/strbase/str_D7S820.htm
     # allele 13: 7:84160125-84160367 -
     ["[GATA]13",
-     "ATGTTGGTCAGGCTGACTATGGAGTTATTTTAAGGTTAATATATATAAAGGGTATGATAGAACACTTGTCATAGTTTAGAACGAACTAAC",
+     "ATGTTGGTCAGGCTGACTATGGAGTTATTTTAAGGTTAATATATATAAAGGGTATGATAGAACACTTGTCATA"\
+         "GTTTAGAACGAACTAAC",
      "GATAGATAGATAGATAGATAGATAGATAGATAGATAGATAGATAGATAGATA",
-     "GACAGATTGATAGTTTTTTTTAATCTCACTAAATAGTCTATAGTAAACATTTAATTACCAATATTTGGTGCAATTCTGTCAATGAGGATAAATGTGGAATC"],
+     "GACAGATTGATAGTTTTTTTTAATCTCACTAAATAGTCTATAGTAAACATTTAATTACCAATATTTGGTGCAAT"\
+         "TCTGTCAATGAGGATAAATGTGGAATC"],
              
     "D8S1179" :
     # http://www.cstl.nist.gov/biotech/strbase/str_D8S1179.htm
@@ -106,13 +121,15 @@ orig_CODIS_seq = {
     ["[TCTA]1[TCTG]1[TCTA]11",
      "TTTTTGTATTTCATGTGTACATTCGTA",
      "TCTATCTGTCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTA",
-     "TTCCCCACAGTGAAAATAATCTACAGGATAGGTAAATAAATTAAGGCATATTCACGCAATGGGATACGATACAGTGATGAAAATGAACTAATTATAGCTACG"],
+     "TTCCCCACAGTGAAAATAATCTACAGGATAGGTAAATAAATTAAGGCATATTCACGCAATGGGATACGATAC"\
+         "AGTGATGAAAATGAACTAATTATAGCTACG"],
              
     "D13S317" :
     # http://www.cstl.nist.gov/biotech/strbase/str_D13S317.htm
     # Perhaps, allele 11: 13:82147921-82148112 +
     ["[TATC]11A",
-     "ATCACAGAAGTCTGGGATGTGGAGGAGAGTTCATTTCTTTAGTGGGCATCCGTGACTCTCTGGACTCTGACCCATCTAACGCCTATCTGTATTTACAAATACAT",
+     "ATCACAGAAGTCTGGGATGTGGAGGAGAGTTCATTTCTTTAGTGGGCATCCGTGACTCTCTGGACTCTGACC"\
+         "CATCTAACGCCTATCTGTATTTACAAATACAT",
      "TATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCA",
      "ATCAATCATCTATCTATCTTTCTGTCTGTCTTTTTGGGCTGCC"],
              
@@ -120,7 +137,9 @@ orig_CODIS_seq = {
     # http://www.cstl.nist.gov/biotech/strbase/str_D16S539.htm
     # allele 11: 16:86352518-86352805 +
     ["[GATA]11",
-     "GGGGGTCTAAGAGCTTGTAAAAAGTGTACAAGTGCCAGATGCTCGTTGTGCACAAATCTAAATGCAGAAAAGCACTGAAAGAAGAATCCAGAAAACCACAGTTCCCATTTTTATATGGGAGCAAACAAAGGCAGATCCCAAGCTCTTCCTCTTCCCTAGATCAATACAGACAGACAGACAGGTG",
+     "GGGGGTCTAAGAGCTTGTAAAAAGTGTACAAGTGCCAGATGCTCGTTGTGCACAAATCTAAATGCAGAAAAGC"\
+         "ACTGAAAGAAGAATCCAGAAAACCACAGTTCCCATTTTTATATGGGAGCAAACAAAGGCAGATCCCAAG"\
+         "CTCTTCCTCTTCCCTAGATCAATACAGACAGACAGACAGGTG",
      "GATAGATAGATAGATAGATAGATAGATAGATAGATAGATAGATA",
      "TCATTGAAAGACAAAACAGAGATGGATGATAGATACATGCTTACAGATGCACACACAAAC"],
              
@@ -130,14 +149,17 @@ orig_CODIS_seq = {
     ["[AGAA]18",
      "GAGCCATGTTCATGCCACTGCACTTCACTCTGAGTGACAAATTGAGACCTTGTCTC",
      "AGAAAGAAAGAAAGAAAGAAAGAAAGAAAGAAAGAAAGAAAGAAAGAAAGAAAGAAAGAAAGAAAGAAAGAA",
-     "AAAGAGAGAGGAAAGAAAGAGAAAAAGAAAAGAAATAGTAGCAACTGTTATTGTAAGACATCTCCACACACCAGAGAAGTTAATTTTAATTTTAACATGTTAAGAACAGAGAGAAGCCAACATGTCCACCTTAGGCTGACGGTTTGTTTATTTGTGTTGTTGCTGGTAGTCGGGTTTG"],
+     "AAAGAGAGAGGAAAGAAAGAGAAAAAGAAAAGAAATAGTAGCAACTGTTATTGTAAGACATCTCCACACACCAG"\
+         "AGAAGTTAATTTTAATTTTAACATGTTAAGAACAGAGAGAAGCCAACATGTCCACCTTAGGCTGACGGTTT"\
+         "GTTTATTTGTGTTGTTGCTGGTAGTCGGGTTTG"],
              
     "D21S11" :
     # http://www.cstl.nist.gov/biotech/strbase/str_D21S11.htm
     # Perhaps, allele 29: 21:19181945-19182165 +
     ["[TCTA]4[TCTG]6[TCTA]3TA[TCTA]3TCA[TCTA]2TCCATA[TCTA]11",
      "GTGAGTCAATTCCCCAAGTGAATTGCCT",
-     "TCTATCTATCTATCTATCTGTCTGTCTGTCTGTCTGTCTGTCTATCTATCTATATCTATCTATCTATCATCTATCTATCCATATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTA",
+     "TCTATCTATCTATCTATCTGTCTGTCTGTCTGTCTGTCTGTCTATCTATCTATATCTATCTATCTATCATCTATCT"\
+         "ATCCATATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTATCTA",
      "TCGTCTATCTATCCAGTCTATCTACCTCCTATTAGTCTGTCTCTGGAGAACATTGACTAATACAAC"],
 
     # "AMEL" - http://www.cstl.nist.gov/biotech/strbase/jpg_amel.htm
@@ -158,8 +180,9 @@ orig_CODIS_seq = {
 CODIS_ref_name = {}
 
 
-"""
-"""
+# --------------------------------------------------------------------------- #
+# Functions for handling sequences                                            #
+# --------------------------------------------------------------------------- #
 def get_flanking_seqs(seq,
                       flank_len = 500):
     def align_seq(seq):
@@ -169,6 +192,7 @@ def get_flanking_seqs(seq,
                         "-x", "grch38/genome",
                         "-c", seq]
         align_proc = subprocess.Popen(aligner_cmd,
+                                      universal_newlines=True,
                                       stdout=subprocess.PIPE,
                                       stderr=open("/dev/null", 'w'))
         chr, left, right, strand = "", -1, -1, '+'
@@ -190,10 +214,17 @@ def get_flanking_seqs(seq,
         return chr, left, right, strand
     
     chr, left, right, strand = align_seq(seq)    
-    left_flank_seq, right_flank_seq = "", ""
+    left_flank_seq  = ""
+    right_flank_seq = ""
     if left > 1:
-        extract_seq_cmd = ["samtools", "faidx", "genome.fa", "%s:%d-%d" % (chr, max(1, left - flank_len), left - 1)]
+        extract_seq_cmd = ["samtools", 
+                           "faidx", 
+                           "genome.fa", 
+                           "%s:%d-%d" % (chr, 
+                                         max(1, left - flank_len), 
+                                         left - 1)]
         extract_seq_proc = subprocess.Popen(extract_seq_cmd,
+                                            universal_newlines = True,
                                             stdout=subprocess.PIPE,
                                             stderr=open("/dev/null", 'w'))
         for line in extract_seq_proc.stdout:
@@ -201,8 +232,12 @@ def get_flanking_seqs(seq,
                 continue
             line = line.strip()
             left_flank_seq += line
-    extract_seq_cmd = ["samtools", "faidx", "genome.fa", "%s:%d-%d" % (chr, right, right + flank_len - 1)]
+    extract_seq_cmd = ["samtools", 
+                       "faidx", 
+                       "genome.fa", 
+                       "%s:%d-%d" % (chr, right, right + flank_len - 1)]
     extract_seq_proc = subprocess.Popen(extract_seq_cmd,
+                                        universal_newlines=True,
                                         stdout=subprocess.PIPE,
                                         stderr=open("/dev/null", 'w'))
     for line in extract_seq_proc.stdout:
@@ -212,25 +247,27 @@ def get_flanking_seqs(seq,
         right_flank_seq += line
 
     if strand == '-':
-        left_flank_seq, right_flank_seq = typing_common.reverse_complement(right_flank_seq), typing_common.reverse_complement(left_flank_seq)
+        left_flank_seq  = typing_common.reverse_complement(right_flank_seq)
+        right_flank_seq = typing_common.reverse_complement(left_flank_seq)
 
     chr, _, _, _ = align_seq(left_flank_seq + seq + right_flank_seq)
     assert chr != ""
     
     return left_flank_seq, right_flank_seq
 
-
-
-"""
-"""
-def get_equal_score(repeat_i, repeat_nums_i, repeat_j, repeat_nums_j):
+def get_equal_score(repeat_i, 
+                    repeat_nums_i, 
+                    repeat_j, 
+                    repeat_nums_j):
     if repeat_i == repeat_j:
         # DK - experimental SW alignment
         min_diff = sys.maxsize
         for repeat_num_i in repeat_nums_i:
             for repeat_num_j in repeat_nums_j:
                 min_diff = min(abs(repeat_num_i - repeat_num_j), min_diff)
-        equal_score = -min_diff / 10.0 + (len(repeat_nums_i) + len(repeat_nums_j)) / 100.0
+        equal_score = -min_diff / 10.0\
+                         + (len(repeat_nums_i) \
+                         + len(repeat_nums_j)) / 100.0
         equal_score = max(min(0.0 if min_diff == 0 else -0.1, equal_score), -0.9)
 
         # DK - just for now
@@ -242,34 +279,34 @@ def get_equal_score(repeat_i, repeat_nums_i, repeat_j, repeat_nums_j):
     else:
         return -2
 
-    
-"""
-Smith Waterman Algorithm
-"""
+""" Smith Waterman Algorithm """
 def SW_alignment(allele_i, allele_j):
     n, m = len(allele_i), len(allele_j)
-    a = [[-(i+j) if i == 0 or j == 0 else 0 for j in range(m + 1)] for i in range(n + 1)]
+    a = [[-(i+j) if i == 0 or j == 0 \
+                 else 0 for j in range(m + 1)] for i in range(n + 1)]
 
     # Fill 2D array
     for i in range(n):
         repeat_i, repeat_nums_i = allele_i[i]
         for j in range(m):
             repeat_j, repeat_nums_j = allele_j[j]
-            equal_score = get_equal_score(repeat_i, repeat_nums_i, repeat_j, repeat_nums_j)
+            equal_score = get_equal_score(repeat_i, 
+                                          repeat_nums_i, 
+                                          repeat_j, 
+                                          repeat_nums_j)
             a[i+1][j+1] = max(a[i][j+1] - 1, a[i+1][j] - 1, a[i][j] + equal_score)
 
     return a, n, m
 
-
-"""
-"""
 def combine_alleles(backbone_allele, add_allele):
-    allele_i, allele_j = backbone_allele, add_allele
+    allele_i = backbone_allele
+    allele_j = add_allele
     a, n, m = SW_alignment(allele_i, allele_j)
 
     # Back tracking
     new_backbone_allele = []
-    i, j = n - 1, m - 1
+    i = n - 1
+    j = m - 1
     while i >= 0 or j >= 0:
         if i < 0:
             repeat_j, repeat_nums_j = allele_j[j]
@@ -282,7 +319,10 @@ def combine_alleles(backbone_allele, add_allele):
         else:
             repeat_i, repeat_nums_i = allele_i[i]
             repeat_j, repeat_nums_j = allele_j[j]    
-            equal_score = get_equal_score(repeat_i, repeat_nums_i, repeat_j, repeat_nums_j)
+            equal_score = get_equal_score(repeat_i, 
+                                          repeat_nums_i, 
+                                          repeat_j, 
+                                          repeat_nums_j)
             if a[i][j+1] - 1 == a[i+1][j+1]:
                 new_backbone_allele.append([repeat_i, repeat_nums_i | set([0])])
                 i -= 1
@@ -292,71 +332,74 @@ def combine_alleles(backbone_allele, add_allele):
             else:
                 assert a[i][j] + equal_score == a[i+1][j+1]
                 if repeat_i == repeat_j:
-                    new_backbone_allele.append([repeat_i, repeat_nums_i | repeat_nums_j])
+                    new_backbone_allele.append([repeat_i, 
+                                                repeat_nums_i | repeat_nums_j])
                 else:
                     assert repeat_nums_i == repeat_nums_j
                     assert repeat_nums_i == set([1])
-                    new_backbone_allele.append([repeat_i | repeat_j, repeat_nums_i | repeat_nums_j])
+                    new_backbone_allele.append([repeat_i | repeat_j, 
+                                                repeat_nums_i | repeat_nums_j])
                 i -= 1
                 j -= 1
 
     new_backbone_allele = new_backbone_allele[::-1]
     return new_backbone_allele
 
-
-"""
-"""
 def msf_alignment(backbone_allele, allele):
-    allele_i, allele_j = backbone_allele, allele
+    allele_i = backbone_allele
+    allele_j = allele
     a, n, m = SW_alignment(allele_i, allele_j)
 
     # Back tracking
-    allele_seq, backbone_seq = "", ""
-    i, j = n - 1, m - 1
+    allele_seq   = ""
+    backbone_seq = ""
+    i = n - 1
+    j = m - 1
     while i >= 0 or j >= 0:
         assert i >= 0
         repeats_i, repeat_nums_i = allele_i[i]
-        repeat_i = ""
+        repeat_i   = ""
         max_repeat = ""
         for repeat_str in repeats_i:
             if len(repeat_str) > len(repeat_i):
                 repeat_i = repeat_str
         repeat_num_i = max(repeat_nums_i)
         if j < 0:
-            allele_seq = '.' * (len(repeat_i) * repeat_num_i) + allele_seq
+            allele_seq   = '.' * (len(repeat_i) * repeat_num_i) + allele_seq
             backbone_seq = repeat_i * repeat_num_i + backbone_seq
             i -= 1
         else:
             repeats_j, repeat_nums_j = allele_j[j]
             assert len(repeats_j) == 1 and len(repeat_nums_j) == 1
             repeat_j, repeat_num_j = list(repeats_j)[0], list(repeat_nums_j)[0]
-            equal_score = get_equal_score(repeats_i, repeat_nums_i, repeats_j, repeat_nums_j)
+            equal_score = get_equal_score(repeats_i, 
+                                          repeat_nums_i, 
+                                          repeats_j, 
+                                          repeat_nums_j)
             if a[i][j+1] - 1 == a[i+1][j+1]:
-                allele_seq = '.' * (len(repeat_i) * repeat_num_i) + allele_seq
+                allele_seq   = '.' * (len(repeat_i) * repeat_num_i) + allele_seq
                 backbone_seq = repeat_i * repeat_num_i + backbone_seq
                 i -= 1
             else:
                 assert a[i][j] + equal_score == a[i+1][j+1]
                 if repeat_i == repeat_j:
-                    add_seq = repeat_i * repeat_num_j
-                    dot_seq = '.' * (len(repeat_i) * (repeat_num_i - repeat_num_j))
-                    allele_seq = add_seq + dot_seq + allele_seq
-                    add_seq = repeat_i * repeat_num_i
+                    add_seq      = repeat_i * repeat_num_j
+                    dot_seq      = '.' \
+                                    * (len(repeat_i) * (repeat_num_i - repeat_num_j))
+                    allele_seq   = add_seq + dot_seq + allele_seq
+                    add_seq      = repeat_i * repeat_num_i
                     backbone_seq = add_seq + backbone_seq                    
                 else:
                     assert repeat_nums_i == repeat_nums_j and repeat_nums_i == set([1])
-                    dot_seq = '.' * (len(repeat_i) - len(repeat_j))
-                    allele_seq = repeat_j + dot_seq + allele_seq
+                    dot_seq      = '.' * (len(repeat_i) - len(repeat_j))
+                    allele_seq   = repeat_j + dot_seq + allele_seq
                     backbone_seq = repeat_i + backbone_seq                    
                 i -= 1
                 j -= 1
 
     return allele_seq, backbone_seq
 
-
-"""
-Extract multiple sequence alignments
-"""
+""" Extract multiple sequence alignments """
 def extract_msa(base_dname,
                 base_fname,
                 locus_list,
@@ -368,7 +411,8 @@ def extract_msa(base_dname,
     # Load allele frequency information
     allele_freq = {}
     if min_freq > 0.0:
-        excel = openpyxl.load_workbook("hisatgenotype_db/CODIS/NIST-US1036-AlleleFrequencies.xlsx")
+        excel = openpyxl.load_workbook("hisatgenotype_db/CODIS/"\
+                                         "NIST-US1036-AlleleFrequencies.xlsx")
         sheet = excel.get_sheet_by_name(u'All data, n=1036')
         for col in range(2, 100):
             locus_name = sheet.cell(row = 3, column = col).value
@@ -396,7 +440,10 @@ def extract_msa(base_dname,
                 new_CODIS_seq[locus_name] = fields
         CODIS_seq = new_CODIS_seq        
 
-    # Add some additional sequences to allele sequences to make them reasonably long for typing and assembly
+    """ 
+    Add some additional sequences to allele sequences to make
+    them reasonably long for typing and assembly 
+    """
     for locus_name, fields in CODIS_seq.items():
         _, left_seq, repeat_seq, right_seq = fields
         allele_seq = left_seq + repeat_seq + right_seq
@@ -404,7 +451,8 @@ def extract_msa(base_dname,
         CODIS_seq[locus_name][1] = left_flank_seq + left_seq
         CODIS_seq[locus_name][3] = right_seq + right_flank_seq
 
-        print( "%s is found on the reference genome (GRCh38)" % locus_name, file=sys.stderr)
+        print( "%s is found on the reference genome (GRCh38)" % locus_name, 
+              file=sys.stderr)
     
     for locus_name in CODIS_seq.keys():
         alleles = []
@@ -421,10 +469,11 @@ def extract_msa(base_dname,
             alleles.append([allele_id, repeat_st])
 
         # From   [TTTC]3TTTTTTCT[CTTT]20CTCC[TTCC]2
-        # To     [['TTTC', [3]], ['TTTTTTCT', [1]], ['CTTT', [20]], ['CTCC', [1]], ['TTCC', [2]]]
+        # To     [['TTTC', [3]], ['TTTTTTCT', [1]], 
+        #         ['CTTT', [20]], ['CTCC', [1]], ['TTCC', [2]]]
         def read_allele(repeat_st):
             allele = []
-            s = 0
+            s      = 0
             while s < len(repeat_st):
                 ch = repeat_st[s]
                 if ch == ' ':
@@ -432,7 +481,7 @@ def extract_msa(base_dname,
                     continue
                 assert ch in "[ACGT"
                 if ch == '[':
-                    s += 1
+                    s     += 1
                     repeat = ""
                     while s < len(repeat_st):
                         nt = repeat_st[s]
@@ -449,7 +498,7 @@ def extract_msa(base_dname,
                         digit = repeat_st[s]
                         if digit.isdigit():
                             num = num * 10 + int(digit)
-                            s += 1
+                            s  += 1
                         else:
                             break
                     assert num > 0
@@ -485,19 +534,20 @@ def extract_msa(base_dname,
         def to_sequence(repeat_st):
             sequence = ""
             for repeats, repeat_nums in repeat_st:
-                repeat = list(repeats)[0]
+                repeat     = list(repeats)[0]
                 repeat_num = list(repeat_nums)[0]
-                sequence += (repeat * repeat_num)
+                sequence  += (repeat * repeat_num)
             return sequence
 
         def remove_redundant_alleles(alleles):
-            seq_to_ids = {}
+            seq_to_ids  = {}
             new_alleles = []
             for allele_id, repeat_st in alleles:
                 allele_seq = to_sequence(repeat_st)
                 if allele_seq in seq_to_ids:
-                    print("Warning: %s: %s has the same sequence as %s" % \
-                        (locus_name, allele_id, seq_to_ids[allele_seq]), file = sys.stderr)
+                    print("Warning: %s: %s has the same sequence as %s" \
+                            % (locus_name, allele_id, seq_to_ids[allele_seq]), 
+                          file = sys.stderr)
                     continue
                 if allele_seq not in seq_to_ids:
                     seq_to_ids[allele_seq] = [allele_id]
@@ -509,9 +559,14 @@ def extract_msa(base_dname,
 
         alleles = remove_redundant_alleles(alleles)
 
-        allele_seqs = [[allele_id, to_sequence(repeat_st)] for allele_id, repeat_st in alleles]
+        allele_seqs = [[allele_id, to_sequence(repeat_st)] \
+                        for allele_id, repeat_st in alleles]
 
-        ref_allele_st, ref_allele_left, ref_allele, ref_allele_right = CODIS_seq[locus_name]
+        ref_allele_st, \
+          ref_allele_left, \
+          ref_allele, \
+          ref_allele_right \
+            = CODIS_seq[locus_name]
         ref_allele_st = read_allele(ref_allele_st)
         for allele_id, allele_seq in allele_seqs:
             if ref_allele == allele_seq:
@@ -525,9 +580,12 @@ def extract_msa(base_dname,
             allele_seqs = [[allele_id, ref_allele]] + allele_seqs
             alleles = [[allele_id, ref_allele_st]] + alleles
 
-        print("%s: %d alleles with reference allele as %s" % (locus_name, len(alleles), CODIS_ref_name[locus_name]), file=sys.stderr)
+        print("%s: %d alleles with reference allele as %s" \
+                % (locus_name, len(alleles), CODIS_ref_name[locus_name]), 
+              file=sys.stderr)
         if verbose:
-            print(("\t", ref_allele_left, ref_allele, ref_allele_right), file=sys.stderr)
+            print(("\t", ref_allele_left, ref_allele, ref_allele_right), 
+                  file=sys.stderr)
             for allele_id, allele in alleles:
                 print((allele_id, "\t", allele), file=sys.stderr)
 
@@ -537,15 +595,22 @@ def extract_msa(base_dname,
         for allele_id, allele_st in reversed(alleles[:-1]):
             if verbose:
                 print(file=sys.stderr)
-                print(allele_id, file=sys.stderr)
-                print(("backbone         :", backbone_allele), file=sys.stderr)
-                print(("allele           :", allele_st), file=sys.stderr)
+                print(allele_id, 
+                      file=sys.stderr)
+                print(("backbone         :", backbone_allele), 
+                      file=sys.stderr)
+                print(("allele           :", allele_st), 
+                      file=sys.stderr)
             backbone_allele = combine_alleles(backbone_allele, allele_st)
-            msf_allele_seq, msf_backbone_seq = msf_alignment(backbone_allele, allele_st)
+            msf_allele_seq, msf_backbone_seq = msf_alignment(backbone_allele, 
+                                                             allele_st)
             if verbose:                
-                print(("combined backbone:", backbone_allele), file=sys.stderr)
-                print(("msf_allele_seq  :", msf_allele_seq), file=sys.stderr)
-                print(("msf_backbone_seq:", msf_backbone_seq), file=sys.stderr)
+                print(("combined backbone:", backbone_allele), 
+                      file=sys.stderr)
+                print(("msf_allele_seq  :", msf_allele_seq), 
+                      file=sys.stderr)
+                print(("msf_backbone_seq:", msf_backbone_seq), 
+                      file=sys.stderr)
                 print(file=sys.stderr)
 
         allele_dic = {}
@@ -554,7 +619,8 @@ def extract_msa(base_dname,
 
         allele_repeat_msf = {}
         for allele_id, allele_st in alleles:
-            msf_allele_seq, msf_backbone_seq = msf_alignment(backbone_allele, allele_st)
+            msf_allele_seq, msf_backbone_seq = msf_alignment(backbone_allele, 
+                                                             allele_st)
             allele_repeat_msf[allele_id] = msf_allele_seq
 
         # Sanity check
@@ -570,23 +636,27 @@ def extract_msa(base_dname,
         ref_allele_id = CODIS_ref_name[locus_name]
         allele_msf = {}
         for allele_id, repeat_msf in allele_repeat_msf.items():
-            allele_msf[allele_id] = ref_allele_left + repeat_msf + ref_allele_right
+            allele_msf[allele_id] = ref_allele_left \
+                                        + repeat_msf \
+                                        + ref_allele_right
 
         # Make sure the length of allele ID is short, less than 20 characters
-        max_allele_id_len = max([len(allele_id) for allele_id in allele_dic.keys()])
+        max_allele_id_len = max([len(allele_id) \
+                                  for allele_id in allele_dic.keys()])
         assert max_allele_id_len < 20
 
         # Write MSF (multiple sequence alignment file)
-        msf_len = len(ref_allele_left) + len(ref_allele_right) + repeat_len
+        msf_len   = len(ref_allele_left) + len(ref_allele_right) + repeat_len
         msf_fname = "%s.msf" % locus_name
-        msf_file = open(msf_fname, 'w')
+        msf_file  = open(msf_fname, 'w')
         for s in range(0, msf_len, 50):
             for allele_id, msf in allele_msf.items():
                 assert len(msf) == msf_len
                 allele_name = "%s*%s" % (locus_name, allele_id)
                 print("%20s" % allele_name, file=msf_file)
                 for s2 in range(s, min(msf_len, s + 50), 10):
-                    print(" %s" % msf[s2:s2+10], file=msf_file)
+                    print(" %s" % msf[s2:s2+10], 
+                          file=msf_file)
                 print(file=msf_file)
 
             if s + 50 >= msf_len:
@@ -596,20 +666,23 @@ def extract_msa(base_dname,
 
         # Write FASTA file
         fasta_fname = "%s_gen.fasta" % locus_name
-        fasta_file = open(fasta_fname, 'w')
+        fasta_file  = open(fasta_fname, 'w')
         for allele_id, allele_seq in allele_seqs:
             gen_seq = ref_allele_left + allele_seq + ref_allele_right
-            print(">%s*%s %d bp" % (locus_name, allele_id, len(gen_seq)), file=fasta_file)
+            print(">%s*%s %d bp" % (locus_name, allele_id, len(gen_seq)), 
+                  file=fasta_file)
             for s in range(0, len(gen_seq), 60):
                 print(gen_seq[s:s+60], file=fasta_file)
         fasta_file.close()
 
 
-"""
-"""
+# --------------------------------------------------------------------------- #
+# Main function                                                               #
+# --------------------------------------------------------------------------- #
 if __name__ == '__main__':
     parser = ArgumentParser(
-        description="Extract multiple sequence alignments for DNA Fingerprinting loci")
+        description="Extract multiple sequence alignments "\
+                        "for DNA Fingerprinting loci")
     
     # Add Arguments
     arguments.args_databases(parser)

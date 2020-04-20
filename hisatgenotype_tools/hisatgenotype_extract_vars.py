@@ -1,25 +1,28 @@
 #!/usr/bin/env python
+# --------------------------------------------------------------------------- #
+# Copyright 2015, Daehwan Kim <infphilo@gmail.com>                            #
+#                                                                             #
+# This file is part of HISAT 2. This script is a wrapper for the functions    #
+# needed to build HISATgenotype indicies                                      #
+#                                                                             #
+# HISAT 2 is free software: you can redistribute it and/or modify             #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation, either version 3 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# HISAT 2 is distributed in the hope that it will be useful,                  #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with HISAT 2.  If not, see <http://www.gnu.org/licenses/>.            #
+# --------------------------------------------------------------------------- #
 
-#
-# Copyright 2015, Daehwan Kim <infphilo@gmail.com>
-#
-# This file is part of HISAT 2.
-#
-# HISAT 2 is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# HISAT 2 is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with HISAT 2.  If not, see <http://www.gnu.org/licenses/>.
-#
-
-import os, sys, subprocess, re
+import os
+import sys
+import subprocess
+import re
 import multiprocessing
 from argparse import ArgumentParser, FileType
 from hisatgenotype_typing_process import extract_vars
@@ -32,9 +35,10 @@ def init(l):
 
 l = multiprocessing.Lock()
 
-"""
-This is the Wrapper script that runs the processing code found in hisatgenotype_modules/hisatgenotype_typing_process
-"""
+# --------------------------------------------------------------------------- #
+# This is the Wrapper script that runs the processing code found in           #
+# hisatgenotype_modules/hisatgenotype_typing_process                          #
+# --------------------------------------------------------------------------- #
 if __name__ == '__main__':
     parser = ArgumentParser(
         description="Extract variants from multiple sequence alignments")
@@ -52,7 +56,9 @@ if __name__ == '__main__':
     else:
         locus_list = args.locus_list.split(',')
     if args.inter_gap > args.intra_gap:
-        print("Error: --inter-gap (%d) must be smaller than --intra-gap (%d)" % (args.inter_gap, args.intra_gap), file=sys.stderr)
+        print("Error: --inter-gap (%d) must be smaller than --intra-gap (%d)" \
+                % (args.inter_gap, args.intra_gap), 
+              file=sys.stderr)
         sys.exit(1)
     
     # Clone hisatgenotype database from git

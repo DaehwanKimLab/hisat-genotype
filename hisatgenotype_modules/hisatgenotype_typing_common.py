@@ -64,6 +64,19 @@ def string_slice(string, pos):
     assert len(string) == 1+len(new_string)
     return new_string
 
+""" Simple check for exsistance of file """
+def check_files(fnames):
+    for fname in fnames:
+        if not os.path.exists(fname):
+            print("No %s file found" % fname,
+                  file=sys.stderr)
+            return False
+    return True
+
+# --------------------------------------------------------------------------- #
+# Functions handling Alleles, variants, haplotypes, etc.                      #
+# --------------------------------------------------------------------------- #
+""" Read genome sequence """
 def read_genome(genome_file):
     chr_dic, chr_names, chr_full_names = {}, [], []
 
@@ -86,10 +99,6 @@ def read_genome(genome_file):
     
     return chr_dic, chr_names, chr_full_names
 
-
-# --------------------------------------------------------------------------- #
-# Functions handling Alleles, variants, haplotypes, etc.                      #
-# --------------------------------------------------------------------------- #
 """ This will remove dupliate sequences or sequences that are redundant """
 """ Identical substrings in larger strings are also removed """
 def collapse_alleles(index = {}, 
@@ -310,16 +319,6 @@ def lower_bound(Var_list, pos):
                 m -= 1
             return m
     return low
-
-""" Simple check for exsistance of file """
-def check_files(fnames):
-    for fname in fnames:
-        if not os.path.exists(fname):
-            print("No %s file found" % fname,
-                  file=sys.stderr)
-            return False
-    return True
-
 
 # --------------------------------------------------------------------------- #
 # Database releated routines and functions                                    #

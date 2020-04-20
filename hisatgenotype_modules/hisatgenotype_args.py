@@ -1,33 +1,38 @@
 #!/usr/bin/env python
-#
-# Copyright 2017, Daehwan Kim <infphilo@gmail.com>
-#
-# This file is part of HISAT-genotype.
-#
-# HISAT-genotype is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# HISAT-genotype is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.
-#
+# --------------------------------------------------------------------------- #
+# Copyright 2017, Daehwan Kim <infphilo@gmail.com>                            #
+#                                                                             #
+# This file is part of HISAT-genotype. This contains all Arguments for the    #
+# majority of HISAT-genotype scripts and keeps consistency of names           #
+#                                                                             #
+# HISAT-genotype is free software: you can redistribute it and/or modify      #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation, either version 3 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# HISAT-genotype is distributed in the hope that it will be useful,           #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.     #
+# --------------------------------------------------------------------------- #
 
-
-import sys, os, subprocess, re
+import sys
+import os
+import subprocess
+import re
 import random
 import argparse
 from datetime import datetime
 
-##################################################
-#   Common Arguments
-##################################################
-def args_common(parser, threads = True, debug = False):
+# --------------------------------------------------------------------------- #
+#   Common Arguments                                                          #
+# --------------------------------------------------------------------------- #
+def args_common(parser, 
+                threads = True, 
+                debug = False):
     if threads:
         parser.add_argument("-p", "--threads",
                             dest="threads",
@@ -43,32 +48,40 @@ def args_common(parser, threads = True, debug = False):
                             dest="debug",
                             type=str,
                             default="",
-                            help="Test database or code (options: basic, pair, full, single-end, test_list, test_id)(e.g., test_id:10,basic)")
+                            help="Test database or code (options: basic, "\
+                                    "pair, full, single-end, test_list, "\
+                                    "test_id)(e.g., test_id:10,basic)")
 
-def args_databases(parser, genome = False):
+def args_databases(parser, 
+                   genome = False):
     if genome:
         parser.add_argument("-x", "--ref-genome",
                             dest="genotype_genome",
                             type=str,
                             default="",
-                            help="Base name for genome index if not genotype_genome (default: empty)")
+                            help="Base name for genome index if not "\
+                                    "genotype_genome (default: empty)")
     parser.add_argument("--base", "--base-fname",
                         dest="base_fname",
                         type=str,
                         default="",
-                        help="Base file name for index, variants, haplotypes, etc. (e.g. hla, rbg, codis) (default: empty)")
+                        help="Base file name for index, variants, haplotypes, "\
+                                "etc. (e.g. hla, rbg, codis) (default: empty)")
     parser.add_argument("--locus-list",
                         dest="locus_list",
                         type=str,
                         default="",
-                        help="A comma-separated list of gene names (default: empty, all genes)")
+                        help="A comma-separated list of gene names (default: "\
+                                "empty, all genes)")
 
-def args_set_aligner(parser, missmatch = True):
+def args_set_aligner(parser, 
+                     missmatch = True):
     parser.add_argument("--aligner",
                         dest="aligner",
                         type=str,
                         default="hisat2",
-                        help="Set aligner to use (ex. hisat2, bowtie2) (default: hisat2)")
+                        help="Set aligner to use (ex. hisat2, bowtie2) "\
+                                "(default: hisat2)")
     parser.add_argument("--linear-index",
                         dest="graph_index",
                         action="store_false",
@@ -78,9 +91,11 @@ def args_set_aligner(parser, missmatch = True):
                             dest="num_mismatch",
                             type=int,
                             default=0,
-                            help="Maximum number of mismatches per read alignment to be considered (default: 0)")
+                            help="Maximum number of mismatches per read alignment "\
+                                    "to be considered (default: 0)")
 
-def args_aligner_inputs(parser, keep=False):
+def args_aligner_inputs(parser, 
+                        keep=False):
     parser.add_argument('-f', '--fasta',
                         dest='fastq',
                         action='store_false',
@@ -115,19 +130,23 @@ def args_assembly(parser):
                         dest="output_base",
                         type=str,
                         default="assembly_graph",
-                        help="Assembly base file name (default: assembly_graph)")
+                        help="Assembly base file name "\
+                                "(default: assembly_graph)")
     parser.add_argument("--assembly-verbose",
                         dest="assembly_verbose",
                         action="store_true",
                         help="Output intermediate assembly information")
 
-def args_input_output(parser, indir = True, outdir = True):
+def args_input_output(parser, 
+                      indir = True, 
+                      outdir = True):
     if indir:
         parser.add_argument('--in-dir',
                             dest="read_dir",
                             type=str,
                             default=".",
-                            help='Input directory (e.g. read_input) (default: (empty))')
+                            help='Input directory (e.g. read_input) '\
+                                    '(default: (empty))')
     if outdir:
         parser.add_argument("--out-dir",
                             dest="out_dir",
@@ -147,7 +166,8 @@ def args_reference_type(parser):
                         dest="reference_type",
                         type=str,
                         default="gene",
-                        help="Reference type: gene, chromosome, and genome (default: gene)")
+                        help="Reference type: gene, chromosome, and "\
+                                "genome (default: gene)")
 
 def args_no_partial(parser):
     parser.add_argument('--no-partial',
@@ -159,14 +179,16 @@ def args_single_end(parser):
     parser.add_argument('--single-end',
                         dest='paired',
                         action='store_false',
-                        help='Choose to set files to single-ended reads (unnecessary when using -U -1 -2 options)')
+                        help='Choose to set files to single-ended reads '\
+                                '(unnecessary when using -U -1 -2 options)')
  
 def args_var_gaps(parser):
     parser.add_argument("--inter-gap",
                         dest="inter_gap",
                         type=int,
                         default=30,
-                        help="Maximum distance for variants to be in the same haplotype")
+                        help="Maximum distance for variants to be in "\
+                                "the same haplotype")
     parser.add_argument("--intra-gap",
                         dest="intra_gap",
                         type=int,
@@ -174,9 +196,9 @@ def args_var_gaps(parser):
                         help="Break a haplotype into several haplotypes")
 
 
-##################################################
-#   Script Specific Arguments
-##################################################
+# --------------------------------------------------------------------------- #
+#   Script Specific Arguments                                                 #
+# --------------------------------------------------------------------------- #
 def args_extract_reads(parser):
     parser.add_argument("--suffix",
                         dest="suffix",
@@ -195,8 +217,9 @@ def args_extract_reads(parser):
     parser.add_argument("--max-sample",
                         dest="max_sample",
                         type=int,
-                        default=sys.maxint,
-                        help="Number of samples to be extracted (default: sys.maxint)")
+                        default=sys.maxsize,
+                        help="Number of samples to be extracted "\
+                                "(default: sys.maxsize)")
     parser.add_argument("--job-range",
                         dest="job_range",
                         type=str,
@@ -217,12 +240,14 @@ def args_extract_vars(parser):
                         dest="min_var_freq",
                         type=float,
                         default=0.0,
-                        help="Exclude variants whose freq is below than this value in percentage (Default: 0.0)")    
+                        help="Exclude variants whose freq is below than "\
+                                "this value in percentage (Default: 0.0)")    
     parser.add_argument("--ext-seq",
                         dest="ext_seq_len",
                         type=int,
                         default=0,
-                        help="Length of extra sequences flanking backbone sequences (Default: 0)")
+                        help="Length of extra sequences flanking backbone "\
+                                "sequences (Default: 0)")
     parser.add_argument("--leftshift",
                         dest="leftshift",
                         action="store_true",
@@ -233,7 +258,8 @@ def args_locus(parser):
                         dest="simulate_interval",
                         type=int,
                         default=10,
-                        help="Reads simulated at every these base pairs (default: 10)")
+                        help="Reads simulated at every these base pairs "\
+                                "(default: 10)")
     parser.add_argument("--read-len",
                         dest="read_len",
                         type=int,
@@ -257,22 +283,27 @@ def args_locus(parser):
                         dest="num_editdist",
                         type=int,
                         default=2,
-                        help="Maximum number of mismatches per read alignment to be considered (default: 2)")
+                        help="Maximum number of mismatches per read alignment "\
+                                "to be considered (default: 2)")
     parser.add_argument("--perbase-errorrate",
                         dest="perbase_errorrate",
                         type=float,
                         default=0.0,
-                        help="Per basepair error rate in percentage when simulating reads (default: 0.0)")
+                        help="Per basepair error rate in percentage when "\
+                                "simulating reads (default: 0.0)")
     parser.add_argument("--perbase-snprate",
                         dest="perbase_snprate",
                         type=float,
                         default=0.0,
-                        help="Per basepair SNP rate in percentage when simulating reads (default: 0.0)")
+                        help="Per basepair SNP rate in percentage when simulating "\
+                                "reads (default: 0.0)")
     parser.add_argument("--skip-fragment-regions",
                         dest="skip_fragment_regions",
                         type=str,
                         default="",
-                        help="A comma-separated list of regions from which no reads originate, e.g., 500-600,1200-1400 (default: None).")
+                        help="A comma-separated list of regions from which no "\
+                                "reads originate, e.g., 500-600,1200-1400 "\
+                                "(default: None).")
     parser.add_argument('--verbose-level',
                         dest='verbose_level',
                         type=int,
@@ -286,7 +317,8 @@ def args_locus(parser):
                         dest="only_locus_list",
                         type=str,
                         default="",
-                        help="A comma-separated list of genes (default: empty, all genes)")
+                        help="A comma-separated list of genes (default: "\
+                                "empty, all genes)")
     parser.add_argument("--discordant",
                         dest="discordant",
                         action="store_true",
@@ -298,12 +330,14 @@ def args_locus(parser):
     parser.add_argument("--keep-low-abundance-alleles",
                         dest="remove_low_abundance_alleles",
                         action="store_false",
-                        help="Do not remove alleles with low abundance while performing typing")
+                        help="Do not remove alleles with low abundance while "\
+                                "performing typing")
     parser.add_argument("--display-alleles",
                         dest="display_alleles",
                         type=str,
                         default="",
-                        help="A comma-separated list of alleles to display in HTML (default: empty)")
+                        help="A comma-separated list of alleles to display in HTML "\
+                                "(default: empty)")
 
 
 def args_build_genome(parser):
@@ -321,34 +355,40 @@ def args_locus_samples(parser):
                         dest="region_list",
                         type=str,
                         default="",
-                        help="A comma-separated list of regions (overwrites --base and --locus-list) (default: empty)")
+                        help="A comma-separated list of regions (overwrites "\
+                                "--base and --locus-list) (default: empty)")
     parser.add_argument("--num-editdist",
                         dest="num_editdist",
                         type=int,
                         default=2,
-                        help="Maximum number of mismatches per read alignment to be considered (default: 2)")
+                        help="Maximum number of mismatches per read alignment "\
+                                "to be considered (default: 2)")
     parser.add_argument("--max-sample",
                         dest="max_sample",
                         type=int,
-                        default=sys.maxint,
-                        help="Number of samples to be analyzed (default: sys.maxint)")
+                        default=sys.maxsize,
+                        help="Number of samples to be analyzed (default: "\
+                                "sys.maxsize)")
     parser.add_argument('--platinum-check',
                         dest='platinum_check',
                         action='store_true',
                         help='Check for concordance of platinum genomes')
 
-def args_HLA_genotyping_PGs(parser, gold_allele_info):
+def args_HLA_genotyping_PGs(parser, 
+                            gold_allele_info):
     parser.add_argument("--hla-list",
                         dest="hla_list",
                         type=str,
                         default="A,B,C,DQA1,DQB1,DRB1",
-                        help="A comma-separated list of HLA genes (default: A,B,C,DQA1,DQB1,DRB1)")
+                        help="A comma-separated list of HLA genes "\
+                                "(default: A,B,C,DQA1,DQB1,DRB1)")
     genomes_default = ','.join(gold_allele_info.keys())
     parser.add_argument("--genome-list",
                         dest="genome_list",
                         type=str,
                         default=genomes_default,
-                        help="A comma-separated list of genomes (default: %s)" % genomes_default)
+                        help="A comma-separated list of genomes (default: %s)" \
+                                % genomes_default)
     parser.add_argument("--exclude-allele-list",
                         dest="exclude_allele_list",
                         type=str,
@@ -365,7 +405,9 @@ def args_hla_cyp(parser):
                         dest = "default_allele_list",
                         type=str,
                         default="",
-                        help="A comma-separated list of HLA alleles to be tested. Alleles are retrieved from default backbone data (all alleles included in backbone).")
+                        help="A comma-separated list of HLA alleles to be tested. "\
+                                "Alleles are retrieved from default backbone data "\
+                                "(all alleles included in backbone).")
     parser.add_argument('--partial',
                         dest='partial',
                         action='store_true',
@@ -374,16 +416,20 @@ def args_hla_cyp(parser):
                         dest="aligners",
                         type=str,
                         default="",
-                        help="A comma-separated list of aligners (Overwrites --aligner option) (e.g. hisat2.graph,hisat2.linear,bowtie2.linear)")
+                        help="A comma-separated list of aligners "\
+                                "(Overwrites --aligner option) "\
+                                "(e.g. hisat2.graph,hisat2.linear,bowtie2.linear)")
     parser.add_argument("--simulate-interval",
                         dest="simulate_interval",
                         type=int,
                         default=1,
-                        help="Reads simulated at every these base pairs (default: 1)")
+                        help="Reads simulated at every these base pairs "\
+                                "(default: 1)")
     parser.add_argument("--coverage",
                         dest="coverage",
                         action='store_true',
-                        help="Experimental purpose (assign reads based on coverage)")
+                        help="Experimental purpose (assign reads based on "\
+                                "coverage)")
     parser.add_argument("--best-alleles",
                         dest="best_alleles",
                         action='store_true',
@@ -392,11 +438,15 @@ def args_hla_cyp(parser):
                         dest="exclude_allele_list",
                         type=str,
                         default="",
-                        help="A comma-separated list of alleles to be excluded. Enter a number N to randomly select N alleles for exclusion and N non-excluded alleles for testing (2N tested in total).")
+                        help="A comma-separated list of alleles to be excluded. "\
+                                "Enter a number N to randomly select N alleles "\
+                                "for exclusion and N non-excluded alleles for "\
+                                "testing (2N tested in total).")
     parser.add_argument("--novel_allele_detection",
                         dest="novel_allele_detection",
                         action='store_true',
-                        help="Change test to detection of new alleles. Report sensitivity and specificity rate at the end.")
+                        help="Change test to detection of new alleles. Report "\
+                                "sensitivity and specificity rate at the end.")
 
 def args_convert_codis(parser):
     parser.add_argument("--min-freq",

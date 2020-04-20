@@ -1,26 +1,29 @@
 #!/usr/bin/env python
+# --------------------------------------------------------------------------- #
+# Copyright 2017, Daehwan Kim <infphilo@gmail.com>                            #
+#                                                                             #
+# This file is part of HISAT-genotype. This was the preliminary method for    #
+# running samples multithreaded on a cloud                                    #
+#                                                                             #
+# HISAT-genotype is free software: you can redistribute it and/or modify      #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation, either version 3 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# HISAT-genotype is distributed in the hope that it will be useful,           #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.     #
+# --------------------------------------------------------------------------- #
 
-#
-# Copyright 2017, Daehwan Kim <infphilo@gmail.com>
-#
-# This file is part of HISAT-genotype.
-#
-# HISAT-genotype is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# HISAT-genotype is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.
-#
-
-
-import sys, os, subprocess, re, threading
+import sys
+import os
+import subprocess
+import re
+import threading
 import inspect
 import random
 import glob
@@ -31,31 +34,86 @@ import hisatgenotype_args as arguments
 
 # Platinum genomes - CEPH pedigree (17 family members)
 CEPH_pedigree = {
-    "NA12889" : {"gender" : "M", "spouse" : "NA12890", "children" : ["NA12877"]},
-    "NA12890" : {"gender" : "F", "spouse" : "NA12889", "children" : ["NA12877"]},
-    "NA12877" : {"gender" : "M", "father" : "NA12889", "mother" : "NA12890", "spouse" : "NA12878", "children" : ["NA12879", "NA12880", "NA12881", "NA12882", "NA12883", "NA12884", "NA12885", "NA12886", "NA12887", "NA12888", "NA12893"]},
-
-    "NA12891" : {"gender" : "M", "spouse" : "NA12892", "children" : ["NA12878"]},
-    "NA12892" : {"gender" : "F", "spouse" : "NA12891", "children" : ["NA12878"]},
-    "NA12878" : {"gender" : "F", "father" : "NA12892", "mother" : "NA12891", "spouse" : "NA12877", "children" : ["NA12879", "NA12880", "NA12881", "NA12882", "NA12883", "NA12884", "NA12885", "NA12886", "NA12887", "NA12888", "NA12893"]},
-
-    "NA12879" : {"gender" : "F", "father" : "NA12877", "mother" : "NA12878"},
-    "NA12880" : {"gender" : "F", "father" : "NA12877", "mother" : "NA12878"},
-    "NA12881" : {"gender" : "F", "father" : "NA12877", "mother" : "NA12878"},
-    "NA12882" : {"gender" : "M", "father" : "NA12877", "mother" : "NA12878"},
-    "NA12883" : {"gender" : "M", "father" : "NA12877", "mother" : "NA12878"},
-    "NA12884" : {"gender" : "M", "father" : "NA12877", "mother" : "NA12878"},
-    "NA12885" : {"gender" : "F", "father" : "NA12877", "mother" : "NA12878"},
-    "NA12886" : {"gender" : "M", "father" : "NA12877", "mother" : "NA12878"},
-    "NA12887" : {"gender" : "F", "father" : "NA12877", "mother" : "NA12878"},
-    "NA12888" : {"gender" : "M", "father" : "NA12877", "mother" : "NA12878"},
-    "NA12893" : {"gender" : "M", "father" : "NA12877", "mother" : "NA12878"},
+    "NA12889" : {"gender" : "M", 
+                 "spouse" : "NA12890", 
+                 "children" : ["NA12877"]},
+    "NA12890" : {"gender" : "F", 
+                 "spouse" : "NA12889", 
+                 "children" : ["NA12877"]},
+    "NA12877" : {"gender" : "M", 
+                 "father" : "NA12889", 
+                 "mother" : "NA12890", 
+                 "spouse" : "NA12878", 
+                 "children" : ["NA12879", 
+                               "NA12880", 
+                               "NA12881", 
+                               "NA12882", 
+                               "NA12883", 
+                               "NA12884", 
+                               "NA12885", 
+                               "NA12886", 
+                               "NA12887", 
+                               "NA12888", 
+                               "NA12893"]},
+    "NA12891" : {"gender" : "M", 
+                 "spouse" : "NA12892", 
+                 "children" : ["NA12878"]},
+    "NA12892" : {"gender" : "F", 
+                 "spouse" : "NA12891", 
+                 "children" : ["NA12878"]},
+    "NA12878" : {"gender" : "F", 
+                 "father" : "NA12892", 
+                 "mother" : "NA12891", 
+                 "spouse" : "NA12877", 
+                 "children" : ["NA12879", 
+                               "NA12880", 
+                               "NA12881", 
+                               "NA12882", 
+                               "NA12883",
+                               "NA12884", 
+                               "NA12885", 
+                               "NA12886", 
+                               "NA12887", 
+                               "NA12888", 
+                               "NA12893"]},
+    "NA12879" : {"gender" : "F", 
+                 "father" : "NA12877", 
+                 "mother" : "NA12878"},
+    "NA12880" : {"gender" : "F", 
+                 "father" : "NA12877", 
+                 "mother" : "NA12878"},
+    "NA12881" : {"gender" : "F", 
+                 "father" : "NA12877", 
+                 "mother" : "NA12878"},
+    "NA12882" : {"gender" : "M", 
+                 "father" : "NA12877", 
+                 "mother" : "NA12878"},
+    "NA12883" : {"gender" : "M", 
+                 "father" : "NA12877", 
+                 "mother" : "NA12878"},
+    "NA12884" : {"gender" : "M", 
+                 "father" : "NA12877", 
+                 "mother" : "NA12878"},
+    "NA12885" : {"gender" : "F", 
+                 "father" : "NA12877", 
+                 "mother" : "NA12878"},
+    "NA12886" : {"gender" : "M", 
+                 "father" : "NA12877", 
+                 "mother" : "NA12878"},
+    "NA12887" : {"gender" : "F", 
+                 "father" : "NA12877", 
+                 "mother" : "NA12878"},
+    "NA12888" : {"gender" : "M", 
+                 "father" : "NA12877", 
+                 "mother" : "NA12878"},
+    "NA12893" : {"gender" : "M", 
+                 "father" : "NA12877", 
+                 "mother" : "NA12878"},
     }
 
-
-
-"""
-"""
+# --------------------------------------------------------------------------- #
+# Threadding Class to multiprocess HISAT-genotype                             #
+# --------------------------------------------------------------------------- #
 class myThread(threading.Thread):
     def __init__(self,
                  lock, 
@@ -69,26 +127,26 @@ class myThread(threading.Thread):
                  genotype_results,
                  verbose):
         threading.Thread.__init__(self)
-        self.lock = lock
-        self.paths = paths
-        self.reference_type = reference_type
-        self.region_list = region_list
-        self.num_editdist = num_editdist
-        self.max_sample = max_sample
-        self.assembly = assembly
-        self.out_dir = out_dir
+        self.lock             = lock
+        self.paths            = paths
+        self.reference_type   = reference_type
+        self.region_list      = region_list
+        self.num_editdist     = num_editdist
+        self.max_sample       = max_sample
+        self.assembly         = assembly
+        self.out_dir          = out_dir
         self.genotype_results = genotype_results
-        self.verbose = verbose
+        self.verbose          = verbose
 
     def run(self):
         global work_idx
         while True:
             self.lock.acquire()
             my_work_idx = work_idx
-            work_idx += 1
+            work_idx   += 1
             self.lock.release()
-            if my_work_idx >= len(self.paths) or \
-               my_work_idx >= self.max_sample:
+            if my_work_idx >= len(self.paths) \
+                    or my_work_idx >= self.max_sample:
                 return
             worker(self.lock,
                    self.paths[my_work_idx],
@@ -101,8 +159,9 @@ class myThread(threading.Thread):
                    self.verbose)
 
             
-"""
-"""
+# --------------------------------------------------------------------------- #
+# Set up workers to manage threads and paths                                  #
+# --------------------------------------------------------------------------- #
 work_idx = 0
 def worker(lock,
            path,
@@ -113,14 +172,14 @@ def worker(lock,
            out_dir,
            genotype_results,
            verbose):
-    fq_name = path.split('/')[-1]
+    fq_name  = path.split('/')[-1]
     read_dir = '/'.join(path.split('/')[:-1])
-    genome = fq_name.split('.')[0]
+    genome   = fq_name.split('.')[0]
     if not fq_name.endswith("extracted.1.fq.gz"):
         return
     read_basename = fq_name[:fq_name.find("extracted.1.fq.gz")]
-    read_fname_1, read_fname_2 = "%s/%sextracted.1.fq.gz" % \
-                                 (read_dir, read_basename), "%s/%sextracted.2.fq.gz" % (read_dir, read_basename)
+    read_fname_1  = "%s/%sextracted.1.fq.gz" % (read_dir, read_basename)
+    read_fname_2  = "%s/%sextracted.2.fq.gz" % (read_dir, read_basename)
 
     if not os.path.exists(read_fname_1) or not os.path.exists(read_fname_2):
         return
@@ -148,9 +207,12 @@ def worker(lock,
             print(' '.join(test_hla_cmd), file=sys.stderr)
             lock.release()
 
-        proc = subprocess.Popen(test_hla_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        proc = subprocess.Popen(test_hla_cmd, 
+                                universal_newlines=True,
+                                stdout=subprocess.PIPE, 
+                                stderr=subprocess.STDOUT)
         test_alleles = set()
-        output_list = []
+        output_list  = []
         for line in proc.stdout:
             line = line.strip()
             if line.find("abundance") == -1:
@@ -167,8 +229,9 @@ def worker(lock,
     lock.release()
 
 
-"""
-"""
+# --------------------------------------------------------------------------- #
+# Main Genotyping script to run database building and genotyping              #
+# --------------------------------------------------------------------------- #
 def genotyping(read_dir,
                reference_type,
                region_list,
@@ -239,31 +302,36 @@ def genotyping(read_dir,
 
         for region, region_genotype in genotype_dic.items():
             print(region, file=sys.stderr)
-            included, total = 0, 0
+            included = 0
+            total    = 0
             for genome, genome_alleles in region_genotype.items():
                 genome_alleles = set([allele for allele, _ in genome_alleles])
                 if "father" in CEPH_pedigree[genome]:
                     assert "mother" in CEPH_pedigree[genome]
-                    parents = [CEPH_pedigree[genome]["father"], CEPH_pedigree[genome]["mother"]]
+                    parents = [CEPH_pedigree[genome]["father"], 
+                               CEPH_pedigree[genome]["mother"]]
                 else:
                     parents = []
                 parent_allele_sets = []
                 assert len(parents) in [0, 2]
-                if len(parents) == 2 and \
-                   parents[0] in region_genotype and \
-                   parents[1] in region_genotype:
+                if len(parents) == 2 \
+                        and parents[0] in region_genotype \
+                        and parents[1] in region_genotype:
                     for parent_allele, _ in region_genotype[parents[0]]:
                         for parent_allele2, _ in region_genotype[parents[1]]:
-                            parent_allele_sets.append(set([parent_allele, parent_allele2]))
-                print(("\t", genome, genome_alleles, parent_allele_sets), file=sys.stderr)
+                            parent_allele_sets.append(set([parent_allele, 
+                                                           parent_allele2]))
+                print(("\t", genome, genome_alleles, parent_allele_sets), 
+                      file=sys.stderr)
                 if len(parent_allele_sets) > 0:
                     total += 1
                     if genome_alleles in parent_allele_sets:
                         included += 1
             print("\t%d / %d" % (included, total), file=sys.stderr)
 
-"""
-"""
+# --------------------------------------------------------------------------- #
+# Main function fro script                                                    #
+# --------------------------------------------------------------------------- #
 if __name__ == '__main__':
     parser = ArgumentParser(
         description='genotyping on many samples')
@@ -283,7 +351,9 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if not args.reference_type in ["gene", "chromosome", "genome"]:
-        print("Error: --reference-type (%s) must be one of gene, chromosome, and genome." % (args.reference_type), file=sys.stderr)
+        print("Error: --reference-type (%s) must be one of gene, "\
+                "chromosome, and genome." % (args.reference_type), 
+              file=sys.stderr)
         sys.exit(1)
 
     region_list = {}
@@ -291,7 +361,8 @@ if __name__ == '__main__':
         for region in args.region_list.split(','):
             region = region.split('.')
             if len(region) < 1 or len(region) > 2:
-                print("Error: --region-list is incorrectly formatted.", file=sys.stderr)
+                print("Error: --region-list is incorrectly formatted.", 
+                      file=sys.stderr)
                 sys.exit(1)
                 
             family = region[0].lower()
@@ -307,7 +378,7 @@ if __name__ == '__main__':
         if len(args.base_fname) != len(args.locus_list):
             print("Error: --base and --locus-list not correct", file=sys.stderr)
         for itr in range(len(args.base_fname.split)):
-            family = args.base_fname[itr]
+            family     = args.base_fname[itr]
             loci_names = args.locus_list[itr].split(',')
             region_list.update({ family : loci_names })
 

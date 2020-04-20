@@ -1,6 +1,28 @@
 #!/usr/bin/env python
+# --------------------------------------------------------------------------- #
+# Copyright 2019, Christopher Bennett <christopher@bennett-tech.dev>          #
+#                                                                             # 
+# This file is part of HISAT-genotype. It's purpose is a function module for  #
+# all of HISAtgenotype and holds commonly used scripts                        #
+#                                                                             #
+# HISAT-genotype is free software: you can redistribute it and/or modify      #
+# it under the terms of the GNU General Public License as published by        #
+# the Free Software Foundation, either version 3 of the License, or           #
+# (at your option) any later version.                                         #
+#                                                                             #
+# HISAT-genotype is distributed in the hope that it will be useful,           #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of              #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               #
+# GNU General Public License for more details.                                #
+#                                                                             #
+# You should have received a copy of the GNU General Public License           #
+# along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.     #
+# --------------------------------------------------------------------------- #
 
-import sys, os, subprocess, re
+import sys
+import os
+import subprocess
+import re
 import urllib2
 import xml.etree.ElementTree as etree
 from multiprocessing import Pool
@@ -8,14 +30,13 @@ from argparse import ArgumentParser, FileType
 import hisatgenotype_typing_common as typing_common
 import hisatgenotype_args as arguments
 
-"""
-Download RBC data from website 
-"""
-
-# Symbol for empty nucleotide/sequence
+# --------------------------------------------------------------------------- #
+# Download RBC data from website                                              #
+# --------------------------------------------------------------------------- #
+""" Symbol for empty nucleotide/sequence """
 emptySeq = '*'
-skip_seqs = ['AQP3', 'XG', 'KEL'] 
-    # In here due to error with only one sequence in tmp fasta file during msf building
+skip_seqs = ['AQP3', 'XG', 'KEL'] # In here due to error with only one 
+                                  # sequence in tmp fasta file during msf building
 
 def get_xml(url):
     file = urllib2.urlopen(url)
@@ -25,23 +46,31 @@ def get_xml(url):
     tree = etree.fromstring(data)
     return tree
 
-def get_website(url, verbose = False):
+def get_website(url, 
+                verbose = False):
     tries = 0
     while tries < 4:
         tries += 1
         try:
-            #if verbose: print >> sys.stderr, 'Attempt %d of 3 to connect to URL' % tries
+            if verbose: 
+                print('Attempt %d of 3 to connect to URL' % tries,
+                      file=sys.stderr)
             resp = urllib2.urlopen(url)
         except IOError:
-            #if verbose: print >> sys.stderr, 'No Connection to URL'
+            if verbose: 
+                print('No Connection to URL', 
+                      file=sys.stderr)
             if tries == 3:
                 raise ValueError()
         else:
-            #if verbose: print >> sys.stderr, 'Connection successful!'
+            if verbose: 
+                print('Connection successful!',
+                      file=sys.stderr)
             file = resp.read()
             return file.splitlines(True)
 
-def get_RefSeqID(locus = {}, verbose = False):
+def get_RefSeqID(locus = {}, 
+                 verbose = False):
     refseq = {}
     for gene in locus:
         refseq.update({ gene : [] })
@@ -50,7 +79,9 @@ def get_RefSeqID(locus = {}, verbose = False):
     try:
         website = get_website(webaddress, verbose)
     except ValueError:
-        if verbose: print('Cannot access refseq database at this time', file=sys.stderr)
+        if verbose: 
+            print('Cannot access refseq database at this time', 
+                  file=sys.stderr)
         raise ValueError()
 
     for line in website:
@@ -60,20 +91,30 @@ def get_RefSeqID(locus = {}, verbose = False):
       
     return refseq
 
-def get_seqbyRef(access, gene_name = '', getall = False, verbose = False):
-    webaddress = 'http://www.ncbi.nlm.nih.gov/sviewer/viewer.fcgi?db=nuccore&dopt=gb&sendto=on&id=' + access
+def get_seqbyRef(access, 
+                 gene_name = '', 
+                 getall = False, 
+                 verbose = False):
+    webaddress = 'http://www.ncbi.nlm.nih.gov/sviewer/viewer.fcgi?db='\
+                    'nuccore&dopt=gb&sendto=on&id=' + access
     try:
         website = get_website(webaddress, verbose)
     except ValueError:
-        if verbose: print('No data available for accession: %s' % access, file=sys.stderr)
+        if verbose: 
+            print('No data available for accession: %s' % access, 
+                  file=sys.stderr)
         raise ValueError()
 
-    seqline = ''
-    exon_ranges, exon_numbers, exon_hit = {}, [], False
-    gene_hit, gene_found, gene_end, cds_found = False, False, False, False
-    start_seq = False
-    mRNAline = 1
-
+    seqline      = ''
+    exon_ranges  = {}
+    exon_numbers = []
+    exon_hit     = False
+    gene_hit     = False
+    gene_found   = False
+    gene_end     = False
+    cds_found    = False
+    start_seq    = False
+    mRNAline     = 1
     for line in website:
         if line.startswith('//'): # end of fine
             break
@@ -81,7 +122,7 @@ def get_seqbyRef(access, gene_name = '', getall = False, verbose = False):
         # get sequence
         line = line.strip()
         if start_seq:
-            line = line.replace(' ','')
+            line     = line.replace(' ','')
             seqline += re.sub(r'\d+', '', line.upper())
             continue
         if line.startswith('ORIGIN'):
@@ -96,11 +137,15 @@ def get_seqbyRef(access, gene_name = '', getall = False, verbose = False):
                 if gene_found:
                     gene_end = True
                     continue
-                gene_range = line.split(' ')[-1].replace('>','').replace('<','').split('..')
+                gene_range = line.split(' ')[-1]\
+                                 .replace('>','')\
+                                 .replace('<','')\
+                                 .split('..')
                 gene_hit = True
             elif line.startswith('/gene') and gene_hit:
                 if gene_name in line.replace('"', '').split('='):
-                    left, right = int(gene_range[0]) - 1, int(gene_range[1])
+                    left       = int(gene_range[0]) - 1
+                    right      = int(gene_range[1])
                     gene_found = True
             elif (line.startswith('CDS') or line.startswith('mRNA')) and \
                   gene_found and not cds_found:
@@ -110,7 +155,7 @@ def get_seqbyRef(access, gene_name = '', getall = False, verbose = False):
                 if raw_exons and raw_exons[0][-1] == ',':
                     mRNAline += 1
                 if mRNAline == 1:
-                    exon_ranges.update({ gene_name : ''.join(raw_exons).split(',') })
+                    exon_ranges.update({gene_name : ''.join(raw_exons).split(',')})
                 continue
             elif line.startswith('exon') and gene_found:
                 exon_hit = True
@@ -123,7 +168,7 @@ def get_seqbyRef(access, gene_name = '', getall = False, verbose = False):
                 if raw_exons[-1][-1] == ',':
                     mRNAline += 1
                 else:
-                    exon_ranges.update({ gene_name : ''.join(raw_exons).split(',') })
+                    exon_ranges.update({gene_name : ''.join(raw_exons).split(',')})
                     mRNAline = 1        
 
     if getall and gene_found:
@@ -137,19 +182,23 @@ def get_seqbyRef(access, gene_name = '', getall = False, verbose = False):
                     use_given = False
                 exon_num = exon_numbers[itr] if use_given else itr+1
                 pos = anExon[itr].replace('>','').replace('<','').split('..')
-                corrected_exon.append([exon_num, int(pos[0])-left, int(pos[1])-left])
+                corrected_exon.append([exon_num, 
+                                       int(pos[0])-left, 
+                                       int(pos[1])-left])
             exon_ranges[key] = corrected_exon
         seqline = seqline[left:right]
         
         return seqline, exon_ranges
     elif getall and not gene_found:
-        if verbose: print('No exons found for gene %s in accession %s' % (gene_name, access))
+        if verbose: 
+            print('No exons found for gene %s in accession %s' 
+                    % (gene_name, access))
         return seqline, exon_ranges.update({ gene_name : [-1, -1] })
     else:
         return seqline
 
 def match_seq(ref, seq):
-    subseq = [ref[i:i+100] for i in range(0, len(ref), 100)]
+    subseq  = [ref[i:i+100] for i in range(0, len(ref), 100)]
     correct = False
     for bin in subseq:
         if 'N' in bin:
@@ -180,13 +229,16 @@ def match_seq(ref, seq):
      
     return correct
 
-def write_fasta(out_dir, gene, alleles = {}, loc = 'gen'):
+def write_fasta(out_dir, 
+                gene, 
+                alleles = {}, 
+                loc = 'gen'):
     file_path = os.path.dirname('%s/fasta/' % out_dir)
     if not os.path.exists(file_path):
         os.makedirs(file_path)
  
     filename = file_path + '/%s_%s.fasta' % (gene, loc)
-    ofile = open(filename, 'w')
+    ofile    = open(filename, 'w')
     
     for allele, seq in alleles.items():
         seq = seq.replace(emptySeq, '').replace('.','').replace('N','')
@@ -199,26 +251,37 @@ def write_fasta(out_dir, gene, alleles = {}, loc = 'gen'):
 
 def run_clustalo(in_file):
     out_file = in_file.replace('.fasta', '.msf')
-    cmd = 'clustalo --in=%s --full --outfmt=msf --out=%s --threads=1 --force' % (in_file, out_file)
+    cmd = 'clustalo --in=%s --full --outfmt=msf --out=%s --threads=1 --force' \
+            % (in_file, out_file)
     os.system(cmd)
 
 def run_clustalo_pile(in_file):
     out_file = in_file.replace('.fasta', '.msf')
-    cmd = 'clustalo --in=%s --pileup --outfmt=msf --out=%s --threads=1 --force' % (in_file, out_file)
-    # cmd = 'clustalw2 -infile=%s -output=GDE -outfile=%s -quiet -case=upper > /dev/null' % (in_file, out_file)
+    cmd = 'clustalo --in=%s --pileup --outfmt=msf --out=%s --threads=1 --force' \
+            % (in_file, out_file)
+    # cmd = 'clustalw2 -infile=%s -output=GDE -outfile=%s -quiet -case=upper > /dev/null' 
+    #           % (in_file, out_file)
     os.system(cmd)
 
-def write_msf(threads, out_dir, genfilename, nucfilename, gene, allele_key, alleles = {}, fullGene = [], exon_seg = [], verbose = False):
-    filepath = '%s/msf/' % out_dir
+def write_msf(threads, 
+              out_dir, 
+              genfilename, 
+              nucfilename, 
+              gene, allele_key, 
+              alleles = {}, 
+              fullGene = [], 
+              exon_seg = [], 
+              verbose = False):
+    filepath  = '%s/msf/' % out_dir
     file_path = os.path.dirname(filepath)
     if not os.path.exists(file_path):
         os.makedirs(file_path)
  
-    numsegs = 0
-    files = []
+    numsegs              = 0
+    files                = []
     msf_aligned_gen_list = {}
-    msf_aligned_gen = {}
-    msf_aligned_nuc = {}
+    msf_aligned_gen      = {}
+    msf_aligned_nuc      = {}
     for allele, segs in alleles.items():
         msf_aligned_nuc.update({ allele : '' })
         if fullGene[allele]:
@@ -228,13 +291,14 @@ def write_msf(threads, out_dir, genfilename, nucfilename, gene, allele_key, alle
         if numsegs == 0:
             numsegs = len(segs)
         else:
-            assert numsegs == len(segs), 'Allele %s of length %d when %d is needed' % (allele, len(segs), numsegs)
+            assert numsegs == len(segs), 'Allele %s of length %d when %d is needed' \
+                                            % (allele, len(segs), numsegs)
 
         for itr in range(len(segs)):
             if not fullGene[allele] and itr not in exon_seg:
                 continue
 
-            seq = segs[itr].replace('.', '') # re.sub(r'((?:[ACTG]))\.((?:[ACTG]))', r'\1N\2', segs[itr]).replace('.', 'N')
+            seq   = segs[itr].replace('.', '')
             parts = [s for s in seq.split(emptySeq) if s]
 
             if not seq.replace(emptySeq, ''):
@@ -253,7 +317,7 @@ def write_msf(threads, out_dir, genfilename, nucfilename, gene, allele_key, alle
             if len(parts) > 1:
                 for itr in range(len(parts)):
                     part =  '%s_pt%d' % (allele, itr)
-                    allele_key.update({ re.sub('[^0-9a-zA-Z]+', '_', part) : allele })
+                    allele_key.update({re.sub('[^0-9a-zA-Z]+', '_', part) : allele})
                     f.write('> %s\n' % (part))
                     f.write('%s\n' % parts[itr])
             else:
@@ -272,10 +336,12 @@ def write_msf(threads, out_dir, genfilename, nucfilename, gene, allele_key, alle
     pool.join()
     
     for itr in range(len(files)):
-        file_ = files[itr]
-        parts, fulls, filealleles = {}, {}, []
-        seq = ''
-        header = True
+        file_       = files[itr]
+        parts       = {}
+        fulls       = {}
+        filealleles = []
+        seq         = ''
+        header      = True
         for line in open(file_.replace('.fasta', '.msf'), 'r'):
             line = line.strip()
             if line.startswith('//'):
@@ -297,7 +363,7 @@ def write_msf(threads, out_dir, genfilename, nucfilename, gene, allele_key, alle
                 continue
 
             msfallele = line.split()[0]
-            seq = ''.join(line.split()[1:])
+            seq       = ''.join(line.split()[1:])
 
             assert msfallele in allele_key, "%s not in msf2name" % msfallele
 
@@ -334,7 +400,10 @@ def write_msf(threads, out_dir, genfilename, nucfilename, gene, allele_key, alle
             if length == 0:
                 length = len(seq)
             else:           
-                assert length == len(seq), '%s : %s : %d : %d' % (itr, allele, length, len(seq))
+                assert length == len(seq), '%s : %s : %d : %d' % (itr, 
+                                                                  allele, 
+                                                                  length, 
+                                                                  len(seq))
 
             if fullGene[allele]:
                 msf_aligned_gen_list[allele].append(seq)
@@ -355,8 +424,8 @@ def write_msf(threads, out_dir, genfilename, nucfilename, gene, allele_key, alle
         # Correct Boundries
         if itr != 0:
             boundries = {'nts' : 0,
-                        '~' : 0,
-                        'len': 0 }
+                         '~' : 0,
+                         'len': 0 }
             for allele, seqs in msf_aligned_gen_list.items():
                 left, right = seqs[itr-1][-1], seqs[itr][0]
                 if left == '~' and right == '~':
@@ -404,7 +473,8 @@ def write_msf(threads, out_dir, genfilename, nucfilename, gene, allele_key, alle
             if seq_len == 0:
                 seq_len = len(msf_seq)
             else:
-                assert seq_len == len(msf_seq), '%s allele lengths are %d and %d' % (allele, seq_len, len(msf_seq))
+                assert seq_len == len(msf_seq), '%s allele lengths are %d and %d' \
+                                                    % (allele, seq_len, len(msf_seq))
         assert seq_len > 0
 
         file_out = file_path + '/' + filename.split('/')[-1].replace('.fasta', '.msf')
@@ -440,25 +510,24 @@ def extract_RBC(out_dir,
         sys.stdout.write("Processing: [")
         sys.stdout.flush()
 
-    rbc_url = "ftp://ftp.ncbi.nlm.nih.gov/pub/mhc/rbc/Final%20Archive/Alleles/dbRBC_allelevFINAL.xml"
+    rbc_url = "ftp://ftp.ncbi.nlm.nih.gov/pub/mhc/rbc/Final%20Archive/Alleles/"\
+                "dbRBC_allelevFINAL.xml"
 
     raw_data = get_xml(rbc_url) 
     
-    locus = {}
-    fullGene = {}
+    locus          = {}
+    fullGene       = {}
     mixed_partials = []
-
-    geneSegment = {}
-    genSeq = {}
-    genExon = {}
-
-    accession = {}
-    exon_counts = {}
+    geneSegment    = {}
+    genSeq         = {}
+    genExon        = {}
+    accession      = {}
+    exon_counts    = {}
 
     for allele in raw_data.iter('allele'):
         # Update gene loci
         alleleGene = allele[1].text.replace('_', '*').split('*')[0]
-        alleleNam = allele[1].text.replace(alleleGene, '')[1:]
+        alleleNam  = allele[1].text.replace(alleleGene, '')[1:]
          
         switcher = {
             'H' : 'FUT1',
@@ -472,14 +541,16 @@ def extract_RBC(out_dir,
             'RHCE' : 'RHD'}
 
         if alleleGene in switcher.keys():
-            if allele.find('locus').find('name').text == 'RG': # switch one C4B to C4A
+            if allele.find('locus').find('name').text == 'RG': 
+                # switch one C4B to C4A
                 alleleGene = switcher[alleleGene]
-            elif allele.find('locus').find('name').text == 'RHD': # switch a few RHCE to RHD
+            elif allele.find('locus').find('name').text == 'RHD': 
+                # switch a few RHCE to RHD
                 alleleGene = switcher[alleleGene]
             elif alleleGene != 'RHCE' and alleleGene != 'C4B':
                 alleleGene = switcher[alleleGene]
         elif alleleGene == 'SE32??':
-            alleleNam = allele[2].text.split('*')[1]
+            alleleNam  = allele[2].text.split('*')[1]
             alleleGene = 'FUT2'
 
         if gene_list:
@@ -496,7 +567,7 @@ def extract_RBC(out_dir,
             exon_counts.update({ alleleGene : 0 })
 
         if alleleNam not in locus[alleleGene]:
-            genesegs = []
+            genesegs      = []
             allele_access = []
             
             # Get Accession Numbers
@@ -509,18 +580,21 @@ def extract_RBC(out_dir,
                 if info.find('accession') is not None:
                     allele_access.append(info.find('accession').text.split('_')[-1])
             
-            intron_count, empty_intron, exon_count, empty_exon = 0, 0, 0, 0
+            intron_count = 0
+            empty_intron = 0
+            exon_count   = 0
+            empty_exon   = 0
             # Get Nucleotide sequence
             for seqnode in allele.find('blocks').iter('block'):
-                seq = seqnode.find('sequence').text.replace('*', emptySeq)
+                seq    = seqnode.find('sequence').text.replace('*', emptySeq)
                 region = seqnode.find('type').text
 
                 alt_nuc = 'RYKMSWBDHV' # Make Translation Table 
-                seqReg = seq.translate(str.maketrans(alt_nuc, '.' * len(alt_nuc)))                
+                seqReg  = seq.translate(str.maketrans(alt_nuc, '.' * len(alt_nuc)))            
                 raw_seq = seqReg.replace(emptySeq, '').replace('.', '')
                 if len(raw_seq) < 5:
                     raw_seq = ''
-                    seqReg = re.sub(r'[ACGT]' , emptySeq, seqReg)              
+                    seqReg  = re.sub(r'[ACGT]' , emptySeq, seqReg)              
 
                 if region.startswith(('Intron')):
                     intron_count += 1
@@ -537,7 +611,9 @@ def extract_RBC(out_dir,
             if exon_counts[alleleGene] == 0:
                 exon_counts[alleleGene] = exon_count
             elif exon_counts[alleleGene] != exon_count:
-                if verbose: print("\t%s is inconsistent with other alleles: Removing" % alleleNam)
+                if verbose: 
+                    print("\t%s is inconsistent with other alleles: Removing" 
+                            % alleleNam)
                 continue
             
             fullGene.update({ alleleNam : True })
@@ -560,7 +636,7 @@ def extract_RBC(out_dir,
         sys.stdout.write("====")
         sys.stdout.flush()
 
-    refGeneSeq = {}
+    refGeneSeq  = {}
     refGeneExon = {}
     refseq = get_RefSeqID(locus, verbose)
     for gene, value in refseq.items():
@@ -574,7 +650,9 @@ def extract_RBC(out_dir,
         try:
             seq_ofRef, exons_ofRef = get_seqbyRef(value[0], gene, True, verbose)
         except ValueError:
-            if verbose: print('\tKey error %s not found: Removing' % gene, file=sys.stderr)
+            if verbose: 
+                print('\tKey error %s not found: Removing' % gene, 
+                      file=sys.stderr)
             del refseq[gene]
             for name in locus[gene]:
                 del geneSegment[name]
@@ -585,7 +663,9 @@ def extract_RBC(out_dir,
         # Remove genes with non-matching exon numbers
         exon_num = len(exons_ofRef[gene])
         if exon_num != exon_counts[gene]:
-            if verbose: print("\tRemoving %s from data: Non-matching exon count to reference" % gene)
+            if verbose: 
+                print("\tRemoving %s from data: Non-matching exon count to reference" 
+                        % gene)
             for name in locus[gene]:
                 del geneSegment[name]
                 del accession[name]
@@ -645,11 +725,13 @@ def extract_RBC(out_dir,
             geneSegment[allele][0][1] = geneSegment[allele][0][1][-cut_pos:]
             exon_count = 0
             for itr in range(len(geneSegment[allele])): 
-                raw_seq = geneSegment[allele][itr][1].replace(emptySeq, '').replace('.', '')
+                raw_seq = geneSegment[allele][itr][1].replace(emptySeq, '')\
+                                                     .replace('.', '')
                 if not raw_seq:
                     continue
                 
-                left, right = len(genSeq[allele]) + 1, len(genSeq[allele]) + len(raw_seq)
+                left  = len(genSeq[allele]) + 1
+                right = len(genSeq[allele]) + len(raw_seq)
                 genSeq[allele] += raw_seq
                 
                 if geneSegment[allele][itr][0] == 'Exon':
@@ -673,16 +755,19 @@ def extract_RBC(out_dir,
         
         hg_allele = gene + '*HG38.ref.01'
 
-        skip = False
+        skip      = False
         genestart = sys.maxsize
-        geneend = 0
-        genechr = ''
-        exons = []
+        geneend   = 0
+        genechr   = ''
+        exons     = []
 
         if verbose: print('\tExtracting %s from Genome' % gene)
         cmd_aligner = ['hisat2', '-x', 'grch38/genome', '-f', '-c']
         
-        cds_start, cds_end, upstream, downstream = sys.maxsize, 0, 0, 0
+        cds_start  = sys.maxsize
+        cds_end    = 0
+        upstream   = 0
+        downstream = 0
         for pos in refGeneExon[gene]:
             _, exleft, exright = pos
             
@@ -695,15 +780,16 @@ def extract_RBC(out_dir,
             exons.append(exon)
             
         cmd_aligner += ['%s' % ','.join(exons)]
-        upstream = cds_start - 1
-        downstream = len(ref) - cds_end
+        upstream     = cds_start - 1
+        downstream   = len(ref) - cds_end
 
         align_proc = subprocess.Popen(cmd_aligner,
+                                      universal_newlines = True,
                                       stdout=subprocess.PIPE,
                                       stderr=open("/dev/null", 'w'))
 
         strand_reverse = False
-        exons = []
+        exons          = []
         for line in align_proc.stdout:
             if line.startswith('@'):
                 continue
@@ -714,9 +800,10 @@ def extract_RBC(out_dir,
             if flag & 0x10 != 0:
                 strand_reverse = True
             if flag & 0x100 != 0:
-                if verbose: print('\tWarning!: Gene %s with flag %d' % (gene, flag))
+                if verbose: 
+                    print('\tWarning!: Gene %s with flag %d' % (gene, flag))
                 continue
-            left = int(left) - 1
+            left  = int(left) - 1
             right = left
 
             cigars = cigar_re.findall(cigar_str)
@@ -734,7 +821,9 @@ def extract_RBC(out_dir,
             if not genechr:
                 genechr = chr
             elif genechr != chr and not skip:
-                if verbose: print("\tError: exons in Gene %s aligning to chr %s and %s: Not adding" % (gene, genechr, chr))
+                if verbose: 
+                    print("\tError: exons in Gene %s aligning to "\
+                            "chr %s and %s: Not adding" % (gene, genechr, chr))
                 skip = True
             
             exons.append([left, right])
@@ -752,13 +841,17 @@ def extract_RBC(out_dir,
         assert downstream not in [1, -1]
         if strand_reverse:
             genestart -= downstream
-            geneend += upstream
+            geneend   += upstream
         else:
             genestart -= upstream
-            geneend += downstream
+            geneend   += downstream
 
-        cmd_extractGene = ['samtools', 'faidx', 'genome.fa', '%s:%d-%d' % (genechr, genestart, geneend)]
+        cmd_extractGene = ['samtools', 
+                           'faidx', 
+                           'genome.fa', 
+                           '%s:%d-%d' % (genechr, genestart, geneend)]
         extract_proc = subprocess.Popen(cmd_extractGene,
+                                        universal_newlines = True,
                                         stdout=subprocess.PIPE,
                                         stderr=open("/dev/null", 'w'))
         for line in extract_proc.stdout:
@@ -769,15 +862,15 @@ def extract_RBC(out_dir,
         extract_proc.communicate()
 
         exon_pos = range(len(genSeq[hg_allele]))[::-1]
-        hgexons = []
+        hgexons  = []
         for exon in exons:
-            left = (exon[0] - genestart)
+            left  = (exon[0] - genestart)
             right = (exon[1] - genestart)
             if strand_reverse:
-                nleft = exon_pos[right] + 1
+                nleft  = exon_pos[right] + 1
                 nright = exon_pos[left]
             else:
-                nleft = left + 1
+                nleft  = left + 1
                 nright = right
             hgexons.append([nleft, nright])
         
@@ -807,34 +900,42 @@ def extract_RBC(out_dir,
         try:
             correct = match_seq(refGeneSeq[gene_name], seq)
         except ValueError:
-            if verbose: print("Problem with %s" % allele)
+            if verbose: 
+                print("Problem with %s" % allele)
 
         if not correct and allele in accession:
             for accNumber in accession[allele]:
                 try:
-                    reffasta, refexon = get_seqbyRef(accNumber, gene_name, True, verbose)                  
+                    reffasta, refexon = get_seqbyRef(accNumber, 
+                                                     gene_name, 
+                                                     True, 
+                                                     verbose)                  
                     match = match_seq(reffasta, seq)    
                 except ValueError:
-                    if verbose: print("Problem with %s" % allele)
+                    if verbose: 
+                        print("Problem with %s" % allele)
                     continue
        
                 if refexon is None or gene_name not in refexon:
                     continue
  
                 if not match:
-                    if verbose: print('Correcting %s' % allele)
-                    genSeq[allele] = reffasta
+                    if verbose: 
+                        print('Correcting %s' % allele)
+                    genSeq[allele]  = reffasta
                     genExon[allele] = refexon[gene_name]
 
-                    boundries = [bound for exon in genExon[allele] for bound in exon[1:]]
-                    startex, startintron = genExon[allele][0][0], False
+                    boundries   = [bound for exon in genExon[allele] for bound in exon[1:]]
+                    startex     = genExon[allele][0][0]
+                    startintron = False
                     
                     if boundries[0] != 1:
                         startintron = True 
                     else:
                         boundries.pop(0)
 
-                    prev, segs = 0, []
+                    prev = 0
+                    segs = []
                     for bound in boundries:
                         segs.append(['', reffasta[prev:bound-1]])
                         prev = bound-1
@@ -860,7 +961,7 @@ def extract_RBC(out_dir,
                     else:
                         fullGene[allele] = False
 
-    filepath = '%s/RBG/' % out_dir
+    filepath  = '%s/RBG/' % out_dir
     file_path = os.path.dirname(filepath)
     if not os.path.exists(file_path):
         os.makedirs(file_path)
@@ -875,11 +976,11 @@ def extract_RBC(out_dir,
 
     for gene, allelelist in locus.items():
         if verbose: print('Processing %s:' % gene)
-        allele_index = {}
-        msf_key = {}
-        seq_list = []
+        allele_index  = {}
+        msf_key       = {}
+        seq_list      = []
         msf_alleleseq = {}
-        exon_seg = []
+        exon_seg      = []
         
         for itr in range(len(allelelist)):
             allele = allelelist[itr]
@@ -888,12 +989,16 @@ def extract_RBC(out_dir,
             seq_list.append(genSeq[allele])
 
         if verbose: print('\t Checking %s for redundancy' % gene)
-        allele_index, seq_list = typing_common.collapse_alleles(allele_index, seq_list, emptySeq, False, verbose)
+        allele_index, seq_list = typing_common.collapse_alleles(allele_index, 
+                                                                seq_list, 
+                                                                emptySeq, 
+                                                                False, 
+                                                                verbose)
 
-        full_allele = {}
+        full_allele    = {}
         partial_allele = {}
         for allele, ind in allele_index.items():
-            seq = seq_list[ind]
+            seq   = seq_list[ind]
             ofile = open('RBG/rbg.dat', 'a')
             ofile.write('DE\t%s\n' % allele)
             for exon in genExon[allele]:
@@ -935,11 +1040,13 @@ def extract_RBC(out_dir,
             if fullGene[allele]:
                 full_allele.update({ allele : seq })
 
-        if verbose: print('\t Writing %s Fasta' % gene)
+        if verbose: 
+            print('\t Writing %s Fasta' % gene)
         fastaname_gen = write_fasta(filepath, gene, full_allele)
         fastaname_nuc = write_fasta(filepath, gene, partial_allele, loc = 'nuc')
 
-        if verbose: print('\t Writing %s MSF' % gene)
+        if verbose: 
+            print('\t Writing %s MSF' % gene)
          
         write_msf(threads,
                   filepath,
