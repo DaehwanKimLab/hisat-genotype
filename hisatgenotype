@@ -63,28 +63,6 @@ l = multiprocessing.Lock()
 # --------------------------------------------------------------------------- #
 # Base functions to ensuring proper files are present for HISATgenotype       #
 # --------------------------------------------------------------------------- #
-""" Make sure the base files are present """
-def check_base(base_fname, aligner):
-    genotype_fnames = ["%s.fa" % base_fname,
-                       "%s.locus" % base_fname,
-                       "%s.snp" % base_fname,
-                       "%s.haplotype" % base_fname,
-                       "%s.link" % base_fname,
-                       "%s.coord" % base_fname,
-                       "%s.clnsig" % base_fname]
-    # graph index files
-    if aligner == "hisat2":
-        genotype_fnames += ["%s.%d.ht2" % (base_fname, i+1) for i in range(8)]
-    else:
-        assert aligner == "bowtie2"
-        genotype_fnames = ["%s.%d.bt2" % (base_fname, i+1) for i in range(4)]
-        genotype_fnames += ["%s.rev.%d.bt2" % (base_fname, i+1) for i in range(2)]
-        
-    if not typing_common.check_files(genotype_fnames):        
-        return False
-    
-    return True
-
 """ Extract Variants from hisatgenotype database """
 def run_vars(base_fname,
             threads,
@@ -98,8 +76,7 @@ def run_vars(base_fname,
             partial,
             verbose):
     # Clone hisatgenotype database from git
-    if not os.path.exists("hisatgenotype_db"):
-        typing_common.clone_hisatgenotype_database()
+    typing_common.clone_hisatgenotype_database()
     
     if not base_fname:
         base_fname = []
@@ -111,24 +88,25 @@ def run_vars(base_fname,
     pool = multiprocessing.Pool(int(threads), initializer=init, initargs=(l,))
     for base in base_fname:
         if base.find('/') != -1:
-            elems = base.split('/')
-            base = elems[-1]
+            elems      = base.split('/')
+            base       = elems[-1]
             base_dname = '/'.join(elems[:-1])
         else:
             base_dname = ""        
 
-        pool.apply_async(extract_vars, 
-                         args=(base,
-                               base_dname,
-                               locus_list,
-                               inter_gap,
-                               intra_gap,
-                               whole_haplotype,
-                               min_var_freq,
-                               ext_seq_len,
-                               leftshift,
-                               partial,
-                               verbose))
+        err = pool.apply_async(extract_vars, 
+                               args=(base,
+                                     base_dname,
+                                     locus_list,
+                                     inter_gap,
+                                     intra_gap,
+                                     whole_haplotype,
+                                     min_var_freq,
+                                     ext_seq_len,
+                                     leftshift,
+                                     partial,
+                                     verbose))
+    err.get()
     pool.close()
     pool.join()
 
@@ -272,9 +250,7 @@ def extract_bam(file_lists,
                 aligner,
                 verbose):
     # variants, backbone sequence, and other sequeces
-    if not check_base(base, aligner):
-        print("Error: some of the base files are missing!", 
-              file=sys.stderr)
+    if not typing_common.check_base(base, aligner):
         sys.exit(1)
 
     # Read locus alleles (names and sequences)
@@ -418,13 +394,16 @@ def typing_process(args):
 
     skip_fragment_regions = []
     if args.skip_fragment_regions != "":
-        prev_left, prev_right = -1, -1
+        prev_left  = -1 
+        prev_right = -1
         for region in args.skip_fragment_regions.split(','):
             left, right = region.split('-')
-            left, right = int(left), int(right)
+            left  = int(left) 
+            right = int(right)
             assert left < right
             assert prev_right < left
-            prev_left, prev_right = left, right
+            prev_left  = left
+            prev_right = right
             skip_fragment_regions.append([left, right])
 
     # Set display alleles for assembly
@@ -439,8 +418,7 @@ def typing_process(args):
         args.keep_extract = True
 
     # Set default output and make final changes before beginning
-    if args.out_dir == "":
-        args.out_dir = os.getcwd()
+    if args.out_dir == ".":
         args.out_dir += "/hisatgenotype_out"
 
     if not os.path.exists(args.out_dir):
@@ -450,10 +428,11 @@ def typing_process(args):
         if '/' != args.read_dir[-1]:
             args.read_dir += '/'
 
-    
     """ Read Extraction: Optional selection performed by default """
-    is_bam, single_run = False, False
-    read_fnames, fq_fname_base = [], {}
+    is_bam        = False
+    single_run    = False
+    read_fnames   = [] 
+    fq_fname_base = {}
     if args.debug == "":
         if args.read_fname_U != "":
             read_fnames = ['%s%s' % (args.read_dir, args.read_fname_U)]
@@ -479,7 +458,7 @@ def typing_process(args):
             is_bam = True if alignment_fnames else False
 
         if args.read_fname_U != "":
-            paired = False
+            paired          = False
             args.discordant = True
         else:
             paired = args.paired
@@ -523,16 +502,17 @@ def typing_process(args):
                                             initializer=init, 
                                             initargs=(l,))
                 for bam_file in alignment_fnames:
-                    pool.apply_async(extract_bam,
-                                    args = (fq_fname_base,
-                                            geno_genome,
-                                            args.out_dir,
-                                            region_list,
-                                            args.fastq,
-                                            args.paired,
-                                            args.alignment_fname,
-                                            args.aligner,
-                                            args.verbose))
+                    err = pool.apply_async(extract_bam,
+                                           args = (fq_fname_base,
+                                                   geno_genome,
+                                                   args.out_dir,
+                                                   region_list,
+                                                   args.fastq,
+                                                   args.paired,
+                                                   args.alignment_fname,
+                                                   args.aligner,
+                                                   args.verbose))
+                err.get()
                 pool.close()
                 pool.join()
         else:
@@ -552,7 +532,7 @@ def typing_process(args):
     for i in range(len(args.aligner)):
         args.aligner[i] = args.aligner[i].split('.')
 
-    if args.build_index:
+    if args.force_build_index:
         run_vars(args.base_fname,
                 args.threads,
                 [], # Empty Locus-list
@@ -577,7 +557,8 @@ def typing_process(args):
 
         for base, loci in region_list.items():
             if base == "ALL":
-                base, loci = [], []
+                base = []
+                loci = []
             genotyping_locus(base,
                              loci if not only_locus_list else only_locus_list,
                              args.genotype_genome,
@@ -629,45 +610,44 @@ def typing_process(args):
 
                 locus_list = region_list[base] if "ALL" not in region_list else []
                 log[entry] = pool.apply_async(
-                                genotyping_locus,
-                                args = (base,
-                                        locus_list,
-                                        args.genotype_genome,
-                                        only_locus_list,
-                                        args.partial,
-                                        args.aligner,
-                                        fasta_fname,
-                                        args.fastq,
-                                        args.alignment_fname,
-                                        args.threads_aprocess,
-                                        args.simulate_interval,
-                                        args.read_len,
-                                        args.fragment_len,
-                                        args.best_alleles,
-                                        args.num_editdist,
-                                        args.perbase_errorrate,
-                                        args.perbase_snprate,
-                                        skip_fragment_regions,
-                                        args.assembly,
-                                        args.output_base,
-                                        args.error_correction,
-                                        args.keep_alignment,
-                                        args.discordant,
-                                        args.type_primary_exons,
-                                        args.remove_low_abundance_alleles,
-                                        display_alleles,
-                                        args.verbose_level,
-                                        args.assembly_verbose,
-                                        args.out_dir,
-                                        debug)
-                                )
+                    genotyping_locus,
+                    args = (base,
+                            locus_list,
+                            args.genotype_genome,
+                            only_locus_list,
+                            args.partial,
+                            args.aligner,
+                            fasta_fname,
+                            args.fastq,
+                            args.alignment_fname,
+                            args.threads_aprocess,
+                            args.simulate_interval,
+                            args.read_len,
+                            args.fragment_len,
+                            args.best_alleles,
+                            args.num_editdist,
+                            args.perbase_errorrate,
+                            args.perbase_snprate,
+                            skip_fragment_regions,
+                            args.assembly,
+                            args.output_base,
+                            args.error_correction,
+                            args.keep_alignment,
+                            args.discordant,
+                            args.type_primary_exons,
+                            args.remove_low_abundance_alleles,
+                            display_alleles,
+                            args.verbose_level,
+                            args.assembly_verbose,
+                            args.out_dir,
+                            debug)
+                    )
 
         # Generate Log files for errors
         pool.close()
 
         runtime = str(date.today())
         ofnlog = open("%s_hisat-genotype.log" % (runtime), 'w')        
-        
         for entry, x in log.items():
             ofnlog.write('> Base and Files:' + entry + '\n')
             try:
@@ -714,8 +694,7 @@ if __name__ == '__main__':
                         dest='already_extract',
                         action='store_true',
                         help='Skip read extraction if the read files \
-                                input are already extracted by --base'
-                        )
+                                input are already extracted by --base')
 
     arguments.args_single_end(parser)
     arguments.args_assembly(parser)
@@ -731,13 +710,11 @@ if __name__ == '__main__':
     parser_advanced.add_argument('--keep-extract',
                                  dest='keep_extract',
                                  action='store_true',
-                                 help='Keep extracted fastq read files'
-                                 )
-    parser_advanced.add_argument('--build-base',
-                                 dest='build_index',
+                                 help='Keep extracted fastq read files')
+    parser_advanced.add_argument('--force-build-base',
+                                 dest='force_build_index',
                                  action='store_true',
-                                 help='Build the indexes listed in --base-fname'
-                                 )
+                                 help='Build the indexes listed in --base-fname')
 
     arguments.args_set_aligner(parser_advanced)
     arguments.args_var_gaps(parser_advanced)
@@ -751,11 +728,11 @@ if __name__ == '__main__':
                                  default="",
                                  help="Test database or code (options: basic, \
                                             pair, full, single-end, test_list,\
-                                            test_id)(e.g., test_id:10,basic)"
-                                 )
+                                            test_id)(e.g., test_id:10,basic)")
 
     ## Setup arguments into a new namespace for parsing
-    arg_dict, unknown = {}, []
+    arg_dict = {}
+    unknown  = []
     args2, unused = parser_advanced.parse_known_args()
     args1 = parser.parse_args(unused)
     arg_dict.update(vars(args1))

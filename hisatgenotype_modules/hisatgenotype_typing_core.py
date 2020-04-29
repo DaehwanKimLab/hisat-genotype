@@ -30,6 +30,10 @@ from datetime import datetime, date, time
 from copy import deepcopy
 import hisatgenotype_typing_common as typing_common
 import hisatgenotype_assembly_graph as assembly_graph
+import hisatgenotype_validation_check as validation_check
+
+""" Flag to turn on file debugging to run sanity checks """
+SANITY_CHECK = True
 
 # Needed to check for strings and as compatability with python2
 if not hasattr(__builtins__, "basestring"):
@@ -544,14 +548,10 @@ def typing(simulation,
                 = set(primary_exon_allele_reps.values())
 
             # Sanity check
-            for exon_allele in primary_exon_allele_reps.keys():
-                # DK - debugging purposes
-                if exon_allele not in allele_rep_set:
-                    print((exon_allele, 
-                           allele_reps[exon_allele], 
-                           exon_allele in primary_exon_allele_reps.keys()))
-                    
-                assert exon_allele in allele_rep_set
+            if SANITY_CHECK:
+                validation_check.check_repset_inclusion(allele_rep_set,
+                                                        allele_reps,
+                                                        primary_exon_allele_reps)
                                     
             # For checking alternative alignments near the ends of alignments
             Alts_left, Alts_right = typing_common.get_alternatives(ref_seq,
@@ -2387,19 +2387,10 @@ def genotyping_locus(base_fname,
             Genes[locus][allele] = Genes[locus]["%s*BACKBONE" % locus]
 
     # Sanity Check
-    if os.path.exists(base_fname + "_backbone.fa") and \
-       os.path.exists(base_fname + "_sequences.fa"):
-        Genes2 = {}
-        typing_common.read_allele_seq(base_fname + "_backbone.fa", Genes2, True)
-        typing_common.read_allele_seq(base_fname + "_sequences.fa", Genes2, True)
-        for gene_name, alleles in Genes.items():
-            assert gene_name in Genes2
-            for allele_name, allele_seq in alleles.items():
-                assert allele_name in Genes2[gene_name]
-                allele_seq2 = Genes2[gene_name][allele_name]
-                assert allele_seq == allele_seq2, \
-                    'Problems with: %s - length %d vs %d' \
-                        % (allele_name, len(allele_seq), len(allele_seq2))
+    if SANITY_CHECK \
+            and os.path.exists(base_fname + "_backbone.fa") \
+            and os.path.exists(base_fname + "_sequences.fa"):
+        validation_check.check_allele_validity(base_fname, Genes)
 
     # alleles names
     Gene_names = {}

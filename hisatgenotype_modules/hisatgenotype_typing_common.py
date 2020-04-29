@@ -29,7 +29,10 @@ import errno
 from copy import deepcopy
 from datetime import datetime
 import hisatgenotype_typing_process as typing_process
+import hisatgenotype_validation_check as validation_check
 
+""" Flag to turn on file debugging to run sanity checks """
+SANITY_CHECK = True
 # --------------------------------------------------------------------------- #
 #   Sequence processing routines and common functions                         #
 # --------------------------------------------------------------------------- #
@@ -71,6 +74,30 @@ def check_files(fnames):
             print("No %s file found" % fname,
                   file=sys.stderr)
             return False
+    return True
+
+""" Make sure the base files are present """
+def check_base(base_fname, aligner):
+    genotype_fnames = ["%s.fa" % base_fname,
+                       "%s.locus" % base_fname,
+                       "%s.snp" % base_fname,
+                       "%s.haplotype" % base_fname,
+                       "%s.link" % base_fname,
+                       "%s.coord" % base_fname,
+                       "%s.clnsig" % base_fname]
+    # graph index files
+    if aligner == "hisat2":
+        genotype_fnames += ["%s.%d.ht2" % (base_fname, i+1) for i in range(8)]
+    else:
+        assert aligner == "bowtie2"
+        genotype_fnames = ["%s.%d.bt2" % (base_fname, i+1) for i in range(4)]
+        genotype_fnames += ["%s.rev.%d.bt2" % (base_fname, i+1) for i in range(2)]
+        
+    if not check_files(genotype_fnames):
+        print("Error: %s related files are missing!" % base_fname, 
+              file=sys.stderr)
+        return False
+    
     return True
 
 # --------------------------------------------------------------------------- #
@@ -320,6 +347,72 @@ def lower_bound(Var_list, pos):
             return m
     return low
 
+""" Read MSF file and sequences for typing_typing process """
+def read_MSF_file(fname, 
+                  full_alleles,
+                  left_ext_seq = "", 
+                  right_ext_seq = ""):
+    names = {} # HLA allele names to numeric IDs
+    seqs  = [] # HLA multiple alignment sequences
+    for line in open(fname):
+        line = line.strip()
+        if (not line or not line[0].isalnum())\
+                or (line.startswith("MSF"))\
+                or (line.startswith("PileUp")):
+            continue
+
+        if line.startswith("Name"):
+            try:
+                name = line.split('\t')[0]
+                name = name.split()[1]
+            except ValueError:
+                continue
+
+            if name in names:
+                print("Warning: %s is found more than once in Names" \
+                        % (name), 
+                        file=sys.stderr)
+                continue
+
+            names[name] = len(names)
+        else:
+            if len(seqs) == 0:
+                seqs = [left_ext_seq for i in range(len(names))]
+            try:
+                cols  = line.split()
+                name  = cols[0]
+                fives = cols[1:]
+                assert len(fives) > 0
+            except ValueError:
+                continue
+
+            if name not in names:
+                names[name] = len(names)
+
+            id = names[name]
+            if id >= len(seqs):
+                assert id == len(seqs)
+                seqs.append(left_ext_seq)
+                
+            seqs[id] += ''.join(fives)
+
+            # Add sub-names of the allele
+            sub_name = ""
+            for group in name.split(':')[:-1]:
+                if sub_name != "":
+                    sub_name += ":"
+                sub_name += group
+                if sub_name not in full_alleles:
+                    full_alleles[sub_name] = [name]
+                else:
+                    full_alleles[sub_name].append(name)
+
+    if len(right_ext_seq) > 0:
+        for i_ in range(len(seqs)):
+            seqs[i_] += right_ext_seq
+
+    return names, seqs
+
 # --------------------------------------------------------------------------- #
 # Database releated routines and functions                                    #
 # --------------------------------------------------------------------------- #
@@ -367,6 +460,8 @@ def extract_database_if_not_exists(base,
     if check_files(fnames):
         return
 
+    print("Building %s Database" % base,
+         file=sys.stderr)
     typing_process.extract_vars(base,
                                 '',
                                 locus_list,
@@ -589,25 +684,29 @@ def simulate_reads(seq_dic,         # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
             # Get read alignment, e.g., 
             # 260|R_483_61M5D38M23D1M_46|S|hv154,3|S|hv162,10|D|hv185,38|D|hv266
             def get_info(read_seq, pos):
-                info = "%d_" % (seq_map[pos] + 1)
-                total_match, match, sub_match = 0, 0, 0
-                var_str = ""
-                ins_len, ins_var = 0, ""
+                info        = "%d_" % (seq_map[pos] + 1)
+                total_match = 0
+                match       = 0
+                sub_match   = 0
+                var_str     = ""
+                ins_len     = 0
+                ins_var     = ""
                 for i in range(pos, pos + read_len):
                     map_i = ex_seq_map[i]
                     assert ex_seq[map_i] != 'D'
                     total_match += 1
-                    match += 1
+                    match       += 1
                     if ex_seq[map_i] == 'I':
                         if ins_var != "":
                             assert ins_var == ex_desc[map_i]
-                        ins_var = ex_desc[map_i]
+                        ins_var  = ex_desc[map_i]
                         ins_len += 1
                     elif ins_var != "":
                         if var_str != "":
                             var_str += ','
-                        var_str += ("%s|I|%s" % (sub_match, ins_var))
-                        ins_len, ins_var = 0, ""
+                        var_str  += ("%s|I|%s" % (sub_match, ins_var))
+                        ins_len   = 0 
+                        ins_var   = ""
                         sub_match = 0
                     
                     if ex_seq[map_i] != 'I':
@@ -626,8 +725,8 @@ def simulate_reads(seq_dic,         # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
                     
                     if i + 1 < pos + read_len and ex_seq[map_i+1] == 'D':
                         assert match > 0
-                        info += ("%dM" % match)
-                        match = 0
+                        info   += ("%dM" % match)
+                        match   = 0
                         del_len = 1
                         while map_i + 1 + del_len < len(ex_seq):
                             if ex_seq[map_i + 1 + del_len] != 'D':
@@ -636,7 +735,7 @@ def simulate_reads(seq_dic,         # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
                         info += ("%dD" % del_len)
                         if var_str != "":
                             var_str += ','
-                        var_str += ("%s|D|%s" % (sub_match, ex_desc[map_i + 1]))
+                        var_str  += ("%s|D|%s" % (sub_match, ex_desc[map_i + 1]))
                         sub_match = 0
                 
                 assert match > 0
@@ -648,7 +747,8 @@ def simulate_reads(seq_dic,         # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
                 return info
                 
             comp_table = {'A':'T', 'C':'G', 'G':'C', 'T':'A'}
-            reads_1, reads_2 = [], []
+            reads_1    = [] 
+            reads_2    = []
             for i in range(0, len(seq) - frag_len + 1, simulate_interval):
                 if len(skip_fragment_regions) > 0:
                     skip = False
@@ -683,11 +783,11 @@ def simulate_reads(seq_dic,         # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
 
         # for each allele in a list of alleles such as ['A*32:29', 'B*07:02:01']
         for allele_name in allele_names:
-            allele_seq = seq_dic[gene][allele_name]
-            backbone_seq = seq_dic[gene]["%s*BACKBONE" % gene]
-            allele_ex_seq = list(backbone_seq)
-            allele_ex_desc = [''] * len(allele_ex_seq)
-            allele_seq_map = [i for i in range(len(allele_seq))]
+            allele_seq        = seq_dic[gene][allele_name]
+            backbone_seq      = seq_dic[gene]["%s*BACKBONE" % gene]
+            allele_ex_seq     = list(backbone_seq)
+            allele_ex_desc    = [''] * len(allele_ex_seq)
+            allele_seq_map    = [i for i in range(len(allele_seq))]
             allele_ex_seq_map = [i for i in range(len(allele_seq))]
 
             if perbase_snprate > 0:
@@ -708,17 +808,17 @@ def simulate_reads(seq_dic,         # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
                 var_type, var_pos, var_data = Vars[gene][var_id]
                 var_pos += add_pos
                 if var_type == "single":
-                    allele_ex_seq[var_pos] = var_data
+                    allele_ex_seq[var_pos]  = var_data
                     allele_ex_desc[var_pos] = var_id
                 elif var_type == "deletion":
                     del_len = int(var_data)
                     assert var_pos + del_len <= len(allele_ex_seq)
-                    allele_ex_seq[var_pos:var_pos+del_len] = ['D'] * del_len
+                    allele_ex_seq[var_pos:var_pos+del_len]  = ['D'] * del_len
                     allele_ex_desc[var_pos:var_pos+del_len] = [var_id] * del_len
                 else:
                     assert var_type == "insertion"
                     ins_len = len(var_data)
-                    allele_ex_seq = allele_ex_seq[:var_pos] \
+                    allele_ex_seq  = allele_ex_seq[:var_pos] \
                                         + (['I'] * ins_len) \
                                         + allele_ex_seq[var_pos:]
                     allele_ex_desc = allele_ex_desc[:var_pos] \
@@ -729,14 +829,15 @@ def simulate_reads(seq_dic,         # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
             assert len(backbone_seq) + add_pos == len(allele_ex_seq)            
 
             # Build mapping from the allele to the annotated sequence
-            prev_j, minus_pos = 0, 0
+            prev_j    = 0 
+            minus_pos = 0
             for i in range(len(allele_seq)):
                 for j in range(prev_j, len(allele_ex_seq)):
                     if allele_ex_seq[j] != 'D':
                         if allele_ex_seq[j] == 'I':
                             minus_pos += 1
                         break
-                allele_seq_map[i] = j - minus_pos
+                allele_seq_map[i]    = j - minus_pos
                 allele_ex_seq_map[i] = j
                 prev_j = j + 1
             
@@ -763,7 +864,7 @@ def simulate_reads(seq_dic,         # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
 
             mkdir_p(read_directory)
             read_file2 = open('%s/%s' % (read_directory, fname), 'w')
-            read_file = open(fname, 'w')
+            read_file  = open(fname, 'w')
             for read_i in range(len(reads)):
                 query_name = "%d|%s_%s" % (read_i + 1, "LR"[idx-1], reads[read_i][1])
                 if len(query_name) > 251:
@@ -881,7 +982,8 @@ def get_mpileup(alignview_cmd,
 
         read_id, flag, _, pos, _, cigar_str = cols[:6]
         read_seq = cols[9]
-        flag, pos = int(flag), int(pos)
+        flag     = int(flag) 
+        pos      = int(pos)
         # Unalined?
         if flag & 0x4 != 0:
             continue
@@ -898,10 +1000,11 @@ def get_mpileup(alignview_cmd,
         if not allow_discordant and not concordant:
             continue
 
-        read_pos, left_pos = 0, pos
+        read_pos  = 0 
+        left_pos  = pos
         right_pos = left_pos
-        cigars = cigar_re.findall(cigar_str)
-        cigars = [[cigar[-1], int(cigar[:-1])] for cigar in cigars]
+        cigars    = cigar_re.findall(cigar_str)
+        cigars    = [[cigar[-1], int(cigar[:-1])] for cigar in cigars]
         for i in range(len(cigars)):
             cigar_op, length = cigars[i]
             if cigar_op in "MD":
@@ -915,10 +1018,8 @@ def get_mpileup(alignview_cmd,
                             mpileup[right_pos + j][1][read_nt] = 1
                         else:
                             mpileup[right_pos + j][1][read_nt] += 1
-
             if cigar_op in "MND":
                 right_pos += length
-
             if cigar_op in "MIS":
                 read_pos += length
 
@@ -943,10 +1044,11 @@ def get_mpileup(alignview_cmd,
         var_list[var_pos].append([var_id, var_type, var_data])
 
     # Assign known or unknown variants
-    skip_i, prev_del_var_id = -1, ""
+    skip_i = -1 
+    prev_del_var_id = ""
     for i in range(len(mpileup)):
-        nt_dic = mpileup[i][1]
-        ref_nt = ref_seq[i]
+        nt_dic     = mpileup[i][1]
+        ref_nt     = ref_seq[i]
         new_nt_dic = {}
         for nt, count in nt_dic.items():
             var_id = ""
@@ -958,7 +1060,7 @@ def get_mpileup(alignview_cmd,
                     for var_id_, var_type, var_data in var_list[i]:
                         if var_type != "deletion":
                             continue
-                        del_len = int(var_data)
+                        del_len   = int(var_data)
                         del_exist = True
                         for j in range(i + 1, i + del_len):
                             assert j < len(mpileup)
@@ -967,9 +1069,9 @@ def get_mpileup(alignview_cmd,
                                 del_exist = False
                                 break
                         if del_exist:
-                            var_id = var_id_
+                            var_id          = var_id_
                             prev_del_var_id = var_id
-                            skip_i = i + del_len - 1
+                            skip_i          = i + del_len - 1
                             break                                                
             elif nt != 'N' and nt != ref_nt:
                 assert nt in "ACGT"
@@ -981,11 +1083,8 @@ def get_mpileup(alignview_cmd,
                         var_id = var_id_
                         break
             new_nt_dic[nt] = [count, var_id]
-                        
         mpileup[i][1] = new_nt_dic
-
     return mpileup
-
 
 """ Get distance between pairs of reads """
 def get_pair_interdist(alignview_cmd,
@@ -1002,16 +1101,17 @@ def get_pair_interdist(alignview_cmd,
                                       stdout = subprocess.PIPE,
                                       stderr = open("/dev/null", 'w'))
 
-    dist_list = []
+    dist_list    = []
     prev_read_id = None
-    cigar_re = re.compile('\d+\w')
-    reads = []
+    cigar_re     = re.compile('\d+\w')
+    reads        = []
     for line in alignview_proc.stdout:
         line = line.strip()
         cols = line.split()
         read_id, flag, _, pos, _, cigar_str = cols[:6]
         read_seq = cols[9]
-        flag, pos = int(flag), int(pos)
+        flag = int(flag)
+        pos  = int(pos)
         # Unalined?
         if flag & 0x4 != 0:
             continue
@@ -1025,7 +1125,8 @@ def get_pair_interdist(alignview_cmd,
         else:
             concordant = False
 
-        NH, YT = sys.maxsize, ""
+        NH = sys.maxsize 
+        YT = ""
         for i in range(11, len(cols)):
              col = cols[i]
              if col.startswith("NH"):
@@ -1046,7 +1147,7 @@ def get_pair_interdist(alignview_cmd,
                 dist_list.append(dist)
             reads = []
 
-        left_pos = right_pos =  pos
+        left_pos = right_pos = pos
         cigars = cigar_re.findall(cigar_str)
         cigars = [[cigar[-1], int(cigar[:-1])] for cigar in cigars]
         for i in range(len(cigars)):
@@ -1055,11 +1156,10 @@ def get_pair_interdist(alignview_cmd,
                 right_pos += length
 
         reads.append([left_pos, right_pos - 1])
-        
         prev_read_id = read_id
 
     dist_list = sorted(dist_list)
-    dist_avg = sum(dist_list) / max(1, len(dist_list))
+    dist_avg  = sum(dist_list) / max(1, len(dist_list))
     if len(dist_list) > 0:
         dist_median = dist_list[int(len(dist_list)/2)]
     else:
@@ -1149,7 +1249,8 @@ def single_abundance(Gene_cmpt,
         return Gene_prob2
 
     fast_EM = True
-    diff, iter = 1.0, 0
+    diff    = 1.0 
+    iter    =  0
     while diff > 0.0001 and iter < 1000:
         Gene_prob_next = next_prob(Gene_cmpt, Gene_prob, Gene_length)
         if fast_EM:
@@ -1160,8 +1261,10 @@ def single_abundance(Gene_cmpt,
             Gene_prob_next2 = next_prob(Gene_cmpt, 
                                         Gene_prob_next, 
                                         Gene_length)
-            sum_squared_r, sum_squared_v = 0.0, 0.0
-            p_r, p_v = {}, {}
+            sum_squared_r = 0.0 
+            sum_squared_v = 0.0
+            p_r = {}
+            p_v = {}
             for a in Gene_prob.keys():
                 p_r[a] = Gene_prob_next[a] - Gene_prob[a]
                 sum_squared_r += (p_r[a] * p_r[a])
@@ -1226,7 +1329,8 @@ def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATA...
                      Vars,        # {'hv241': ['deletion', 529, '52'], ... }
                      Var_list,    # [[529, 'hv230'], [529, 'hv231'], ...]
                      verbose):
-    haplotype_alts_left, haplotype_alts_right = {}, {}
+    haplotype_alts_left     = {}
+    haplotype_alts_right    = {}
     second_order_haplotypes = set()
     for allele_name, vars in allele_vars.items():
         for v in range(len(vars) - 1):
@@ -1254,7 +1358,7 @@ def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATA...
             return []
 
         if left:
-            bases = [[[pos] + haplotype[1:], ref_seq[pos]]]
+            bases  = [[[pos] + haplotype[1:], ref_seq[pos]]]
             prev_id = None
             if len(haplotype) > 2:
                 prev_id = haplotype[1]        
@@ -1291,7 +1395,7 @@ def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATA...
                 else:
                     assert var_type == "insertion"
         else:
-            bases = [[haplotype[:-1] + [pos], ref_seq[pos]]]
+            bases   = [[haplotype[:-1] + [pos], ref_seq[pos]]]
             prev_id = None
             if len(haplotype) > 2:
                 prev_id = haplotype[-2]       
@@ -1399,7 +1503,7 @@ def get_alternatives(ref_seq,     # GATAACTAGATACATGAGATAGATTTGATAGATA...
                                                   haplotype[-1])
                     return haplotype
 
-                haplotype = to_haplotype_str(haplotype)
+                haplotype     = to_haplotype_str(haplotype)
                 haplotype_alt = to_haplotype_str(haplotype_alt)
                 if left:
                     haplotype_alts = haplotype_alts_left
@@ -1468,12 +1572,16 @@ def identify_ambigious_diffs(ref_seq,
                              cmp_list,
                              verbose,
                              debug = False):
-    cmp_left, cmp_right = 0, len(cmp_list) - 1
-    left, right = cmp_list[0][1], cmp_list[-1][1] + cmp_list[-1][2] - 1
-    left_alt_set, right_alt_set = set(), set()
+    cmp_left      = 0 
+    cmp_right     = len(cmp_list) - 1
+    left          = cmp_list[0][1]
+    right         = cmp_list[-1][1] + cmp_list[-1][2] - 1
+    left_alt_set  = set()
+    right_alt_set =  set()
 
     def get_haplotype_and_seq(cmp_list):
-        ht, seq = [], ""
+        ht  = [] 
+        seq = ""
         for i in range(len(cmp_list)):
             cmp_i = cmp_list[i]
             type, pos, length = cmp_i[:3]
@@ -1498,7 +1606,7 @@ def identify_ambigious_diffs(ref_seq,
     found = False
     for i in reversed(range(len(cmp_list))):
         i_found = False
-        cmp_i = cmp_list[i]
+        cmp_i   = cmp_list[i]
         type, cur_left, length = cmp_i[:3]
         var_id = cmp_i[3] if type in ["mismatch", "deletion"] else ""
 
@@ -1555,17 +1663,19 @@ def identify_ambigious_diffs(ref_seq,
                 print("DK3:", left, right)
 
             for alt_ht_str in Alts_left[rep_ht]:
-                alt_ht = alt_ht_str.split('-')
-                alt_ht_left, alt_ht_right = int(alt_ht[0]), int(alt_ht[-1])
+                alt_ht       = alt_ht_str.split('-')
+                alt_ht_left  = int(alt_ht[0]) 
+                alt_ht_right = int(alt_ht[-1])
                 assert alt_ht_right <= cur_right
-                seq_pos = cur_right - alt_ht_right
-                cur_pos = alt_ht_right
-                part_alt_ht = []
-                alt_ht = alt_ht[1:-1]
+                seq_pos      = cur_right - alt_ht_right
+                cur_pos      = alt_ht_right
+                part_alt_ht  = []
+                alt_ht       = alt_ht[1:-1]
+                
                 for var_id_ in reversed(alt_ht):
                     var_type_, var_pos_, var_data_ = Vars[var_id_]
                     if var_type_ == "deletion":
-                        del_len = int(var_data_)
+                        del_len  = int(var_data_)
                         var_pos_ = var_pos_ + del_len - 1
                     assert var_pos_ <= cur_pos
                     next_seq_pos = seq_pos + (cur_pos - var_pos_)
@@ -1617,7 +1727,7 @@ def identify_ambigious_diffs(ref_seq,
     found = False
     for i in range(0, len(cmp_list)):
         i_found = False
-        cmp_i = cmp_list[i]
+        cmp_i   = cmp_list[i]
         type, cur_left, length = cmp_i[:3]
         var_id = cmp_i[3] if type in ["mismatch", "deletion"] else ""
 
@@ -1660,7 +1770,7 @@ def identify_ambigious_diffs(ref_seq,
                 if right >= ht_pos:
                     continue
 
-            i_found = True
+            i_found   = True
             _, rep_ht = Alts_right_list[ht_j]
 
             if debug:
@@ -1670,12 +1780,14 @@ def identify_ambigious_diffs(ref_seq,
 
             for alt_ht_str in Alts_right[rep_ht]:
                 alt_ht = alt_ht_str.split('-')
-                alt_ht_left, alt_ht_right = int(alt_ht[0]), int(alt_ht[-1])
+                alt_ht_left  = int(alt_ht[0])
+                alt_ht_right = int(alt_ht[-1])
                 assert cur_left <= alt_ht_left
-                seq_pos = alt_ht_left - cur_left
-                cur_pos = alt_ht_left
-                part_alt_ht = []
-                alt_ht = alt_ht[1:-1]
+                seq_pos      = alt_ht_left - cur_left
+                cur_pos      = alt_ht_left
+                part_alt_ht  = []
+                alt_ht       = alt_ht[1:-1]
+
                 for var_id_ in alt_ht:
                     var_type_, var_pos_, var_data_ = Vars[var_id_]
                     assert var_pos_ >= cur_pos
@@ -1695,7 +1807,8 @@ def identify_ambigious_diffs(ref_seq,
                     part_alt_ht.append(var_id_)
                     if next_seq_pos >= len(cur_seq):
                         break
-                    seq_pos, cur_pos = next_seq_pos, next_cur_pos
+                    seq_pos = next_seq_pos
+                    cur_pos = next_cur_pos
 
                 if len(part_alt_ht) > 0:
                     seq_left = len(cur_seq) - seq_pos - 1
@@ -1725,34 +1838,17 @@ def identify_ambigious_diffs(ref_seq,
         right_alt_set.add(str(right))
 
     if cmp_right < cmp_left:
-        cmp_left = 0
+        cmp_left     = 0
         left_alt_set = set([str(left)])
 
     # Sanity check
-    ht_set_ = set()
-    for ht in left_alt_set:
-        ht = '-'.join(ht.split('-')[1:])
-        if ht == "":
-            continue
-        if ht in ht_set_:
-            print(("Error: %s should not be in" % ht, ht_set_), 
-                  file=sys.stderr)
+    if SANITY_CHECK:
+        validation_check.check_amb_uniqueness(cmp_list,
+                                              cmp_left,
+                                              cmp_right,
+                                              left_alt_set,
+                                              right_alt_set)
 
-            # DK - debugging purposes
-            print("DK: cmp_list_range: [%d, %d]" % (cmp_left, cmp_right))
-            print("DK: cmp_list:", cmp_list)
-            print("DK: left_alt_set:", left_alt_set, "right_alt_set:", right_alt_set)
-            
-            assert False
-        ht_set_.add(ht)
-    for ht in right_alt_set:
-        ht = '-'.join(ht.split('-')[:-1])
-        if ht == "":
-            continue
-        if ht in ht_set_:
-            print(("Error: %s should not be in" % ht, ht_set_), file=sys.stderr)
-            assert False
-        ht_set_.add(ht)
 
     if debug:
         print("cmp_list_range: [%d, %d]" % (cmp_left, cmp_right))

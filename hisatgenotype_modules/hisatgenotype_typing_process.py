@@ -29,7 +29,10 @@ import random
 import glob
 import multiprocessing
 import hisatgenotype_typing_common as typing_common
+import hisatgenotype_validation_check as validation_check
 
+""" Flag to turn on file debugging to run sanity checks """
+SANITY_CHECK = True
 # --------------------------------------------------------------------------- #
 # Scripts for use in extract_vars.                                            #
 #                                                                             #
@@ -235,6 +238,7 @@ def extract_vars(base_fname,
                  leftshift,
                  partial,
                  verbose):
+
     base_fullpath_name = base_fname
     if base_dname != "" and not os.path.exists(base_dname):
         os.mkdir(base_dname)
@@ -451,7 +455,8 @@ def extract_vars(base_fname,
             elif look_exon_num:
                 assert line.find("number")
                 look_exon_num = False
-                num = int(filter(str.isdigit, line))-1
+                digits = [x for x in filter(str.isdigit, line)]
+                num    = int(digits[0])-1
                 if gene not in gene_exon_counts:
                     gene_exon_counts[gene] = {}
                 if num not in gene_exon_counts[gene]:
@@ -463,37 +468,44 @@ def extract_vars(base_fname,
             print(("%s exon counts:" % gene, exon_counts), 
                   file=sys.stderr)
 
-    tmp_locus_list = []
-    for gene in locus_list:
-        if gene in remove_locus_list:
+    itr             = 0
+    tmp_genes       = {}
+    tmp_gene_strand = {}
+    while True:
+        if itr == len(locus_list):
+            break
+        gene = locus_list[itr]
+        if gene in remove_locus_list \
+                or (base_fname in spliced_gene \
+                    and gene not in gene_exons):
+            locus_list.pop(itr)
             continue
-        if base_fname in spliced_gene and gene not in gene_exons:
-            continue
-        tmp_locus_list.append(gene)
-    locus_list = tmp_locus_list
-    for key in genes.keys():
-        if key in locus_list:
-            continue
-        del genes[key]
-        del gene_strand[key]
+
+        if gene in genes:
+            tmp_genes[gene]       = genes[gene]
+            tmp_gene_strand[gene] = gene_strand[gene]
+        
+        itr += 1
+    genes       = tmp_genes
+    gene_strand = tmp_gene_strand
 
     # Write the backbone sequences into a fasta file
-    backbone_file = open(base_fullpath_name + "_backbone.fa", 'w')        
+    backbone_file  = open(base_fullpath_name + "_backbone.fa", 'w')        
     # variants w.r.t the backbone sequences into a SNP file
-    var_file = open(base_fullpath_name + ".snp", 'w')
+    var_file       = open(base_fullpath_name + ".snp", 'w')
     var_index_file = open(base_fullpath_name + ".index.snp", 'w')
     # variant frequence
-    var_freq_file = open(base_fullpath_name + ".snp.freq", 'w')
+    var_freq_file  = open(base_fullpath_name + ".snp.freq", 'w')
     # haplotypes
     haplotype_file = open(base_fullpath_name + ".haplotype", 'w')
     # pairs of a variant and the corresponding HLA allels into a LINK file    
-    link_file = open(base_fullpath_name + ".link", 'w')
+    link_file      = open(base_fullpath_name + ".link", 'w')
     # Write all the sequences with dots removed into a file
-    input_file = open(base_fullpath_name + "_sequences.fa", 'w')
+    input_file     = open(base_fullpath_name + "_sequences.fa", 'w')
     # Write allele names into a file
-    allele_file = open("%s.allele" % base_fullpath_name, 'w')
+    allele_file    = open("%s.allele" % base_fullpath_name, 'w')
     # Read partial alleles from hla.data, and write them into a file
-    partial_file = open("%s.partial" % base_fullpath_name, 'w')
+    partial_file   = open("%s.partial" % base_fullpath_name, 'w')
     # Write HISATgenotype Database version into file
     with open("%s.version" % base_fullpath_name, 'w') as fnversion:
         fnversion.write('Database %s derived from HISATgenotype DB version: %s' \
@@ -510,68 +522,6 @@ def extract_vars(base_fname,
             left_ext_seq  = left_ext_seq_dic[gene]
             right_ext_seq = right_ext_seq_dic[gene]
 
-        def read_MSF_file(fname, left_ext_seq = "", right_ext_seq = ""):
-            names = {} # HLA allele names to numeric IDs
-            seqs  = [] # HLA multiple alignment sequences
-            for line in open(fname):
-                line = line.strip()
-                if (not line or not line[0].isalnum())\
-                        or (line.startswith("MSF"))\
-                        or (line.startswith("PileUp")):
-                    continue
-
-                if line.startswith("Name"):
-                    try:
-                        name = line.split('\t')[0]
-                        name = name.split()[1]
-                    except ValueError:
-                        continue
-
-                    if name in names:
-                        print("Warning: %s is found more than once in Names" \
-                                % (name), 
-                              file=sys.stderr)
-                        continue
-
-                    names[name] = len(names)
-                else:
-                    if len(seqs) == 0:
-                        seqs = [left_ext_seq for i in range(len(names))]
-                    try:
-                        cols  = line.split()
-                        name  = cols[0]
-                        fives = cols[1:]
-                        assert len(fives) > 0
-                    except ValueError:
-                        continue
-
-                    if name not in names:
-                        names[name] = len(names)
-
-                    id = names[name]
-                    if id >= len(seqs):
-                        assert id == len(seqs)
-                        seqs.append(left_ext_seq)
-                        
-                    seqs[id] += ''.join(fives)
-
-                    # Add sub-names of the allele
-                    sub_name = ""
-                    for group in name.split(':')[:-1]:
-                        if sub_name != "":
-                            sub_name += ":"
-                        sub_name += group
-                        if sub_name not in full_alleles:
-                            full_alleles[sub_name] = [name]
-                        else:
-                            full_alleles[sub_name].append(name)
-
-            if len(right_ext_seq) > 0:
-                for i_ in range(len(seqs)):
-                    seqs[i_] += right_ext_seq
-
-            return names, seqs
-
         if base_fname in spliced_gene:
             MSA_fname = "hisatgenotype_db/%s/msf/%s_gen.msf" \
                             % (base_fname.upper(), gene)
@@ -584,7 +534,7 @@ def extract_vars(base_fname,
                   file=sys.stderr)
             continue
 
-        names, seqs = read_MSF_file(MSA_fname, left_ext_seq, right_ext_seq)
+        names, seqs = typing_common.read_MSF_file(MSA_fname, left_ext_seq, right_ext_seq)
         full_allele_names = set(names.keys())
 
         # Identify a consensus sequence
@@ -624,7 +574,7 @@ def extract_vars(base_fname,
                 print("Warning: %s does not exist" % partial_MSA_fname, 
                       file=sys.stderr)
                 continue
-            partial_names, partial_seqs = read_MSF_file(partial_MSA_fname)
+            partial_names, partial_seqs = typing_common.read_MSF_file(partial_MSA_fname)
                 
             ref_seq             = seqs[names[ref_gene]]
             ref_seq_map         = create_map(ref_seq)
@@ -812,7 +762,6 @@ def extract_vars(base_fname,
 
                 if varKey not in Vars:
                     if type == 'M':
-                        assert backbone_pos < backbone_freq
                         assert data in backbone_freq[backbone_pos], \
                             "Data %s not in backbone %s of type %s" % (
                                 data, 
@@ -823,7 +772,6 @@ def extract_vars(base_fname,
                     elif type == 'D':
                         del_len = int(data)
                         freq    = 100.0
-                        assert backbone_pos + del_len <= backbone_freq
                         for d in range(del_len):
                             assert '.' in backbone_freq[backbone_pos + d]
                             freq2 = backbone_freq[backbone_pos + d]['.']
@@ -833,7 +781,6 @@ def extract_vars(base_fname,
                         assert type == 'I'
                         ins_len = len(data)
                         freq    = 100.0
-                        assert backbone_pos + ins_len <= backbone_freq
                         for i in range(ins_len):
                             nt = data[i]
                             assert nt in backbone_freq[backbone_pos + i]
@@ -888,35 +835,21 @@ def extract_vars(base_fname,
             elif deletion:
                 insertVar('D', deletion)
         print("Number of variants is %d." % (len(Vars.keys())), 
-              file=sys.stderr)
+              file=sys.stderr)       
 
-        # Compare variants
-        def cmp_varKey(a, b):
-            a_locus, a_type, a_data = a.split('-')
-            b_locus, b_type, b_data = b.split('-')
-            a_locus = int(a_locus)
-            b_locus = int(b_locus)
-            if a_locus != b_locus:
-                return a_locus - b_locus
-            if a_type != b_type:
-                if a_type == 'I':
-                    return -1
-                elif b_type == 'I':
-                    return 1
-                elif a_type == 'M':
-                    return -1
-                else:
-                    assert b_type == 'M'
-                    return 1
-            assert a_data != b_data
-            if a_type in "MI":
-                if a_data < b_data:
-                    return -1
-                else:
-                    return 1
+        def varKey(x):
+            type_ord = {"I" : 0, "M" : 1, "D" : 2}
+            nt_order = {"A" : 0, "C" : 1, "G" : 2, "T" : 3}
+
+            locus, type_, data = x.split("-")
+            locus = int(locus)
+            next_ = type_ord[type_]
+            if type_ == "D":
+                last_ = int(data)
             else:
-                assert a_type == 'D'
-                return int(a_data) - int(b_data)            
+                last_ = nt_order[data]
+
+            return(locus, next_, last_)
 
         Vars_ = {}
         for key, values in Vars.items():
@@ -927,83 +860,17 @@ def extract_vars(base_fname,
                 else:
                     Vars_[name].append(key)
         for name, vars in Vars_.items():
-            Vars_[name] = sorted(vars, cmp=cmp_varKey)
+            Vars_[name] = sorted(vars, key=varKey)
 
-        # Sanity check -
-        #    (1) Reconstruct the other sequences from the backbone 
-        #           sequence and variants and
-        #    (2) Confirm these constructed sequences are the same 
-        #           as those input sequences.
-        for cmp_name, id in names.items():
-            if cmp_name == backbone_name:
-                continue
+            if SANITY_CHECK: # SANITY CHECK for sorting
+                validation_check.validate_variants(Vars_[name])
 
-            constr_seq = backbone_seq.replace('.', '')
-            assert "~" not in constr_seq
-            constr_seq = list(constr_seq)
-            locus_diff = 0
-            if cmp_name not in Vars_:
-                continue
-            
-            for var in Vars_[cmp_name]:
-                try:
-                    locus, type, data = var.split('-')
-                    locus = int(locus)
-                except ValueError:
-                    continue
-
-                if type == 'M':
-                    assert len(data) == 1
-                    constr_seq[locus + locus_diff] = data[0]
-                elif type == 'I':
-                    assert locus + locus_diff >= 0
-                    assert locus + locus_diff <= len(constr_seq)
-                    constr_seq = constr_seq[:locus + locus_diff] \
-                                    + list(data) \
-                                    + constr_seq[locus + locus_diff:]
-                    locus_diff += len(data)
-                else:
-                    assert type == 'D'
-                    assert locus + locus_diff + len(data) <= len(constr_seq)
-                    assert locus + locus_diff >= 0
-                    del_len = int(data)
-                    constr_seq = constr_seq[:locus + locus_diff] \
-                                    + constr_seq[locus + locus_diff + del_len:]
-                    locus_diff -= del_len
-
-            assert id < len(seqs)
-            cmp_seq = seqs[id].replace('.', '')
-            if len(constr_seq) != len(cmp_seq):
-                print("Error: reconstruction fails (%s)! \
-                            Lengths different: %d vs. %d" \
-                                % (cmp_name, len(constr_seq), len(cmp_seq)), 
-                      file=sys.stderr)
-                exit(1)
-
-            # Add missing sequence markers
-            if "~" in cmp_seq:
-                for s in range(len(constr_seq)):
-                    if cmp_seq[s] == "~":
-                        constr_seq[s] = "~"
-            constr_seq = "".join(constr_seq)                
-
-            # Sanity check
-            for s in range(len(constr_seq)):
-                if constr_seq[s] != cmp_seq[s]:
-                    print("Differ at %d: %s vs. %s (reconstruction vs. original)" \
-                            % (s, constr_seq[s], cmp_seq[s]), 
-                          file=sys.stderr)
-                    print("%s:%s vs. %s:%s" \
-                            % (constr_seq[s-10:s], 
-                               constr_seq[s:s+10], 
-                               cmp_seq[s-10:s], 
-                               cmp_seq[s:s+10]),
-                          file=sys.stderr)
-
-            if constr_seq != cmp_seq.replace('.', ''):
-                print("Error: reconstruction fails for %s" % (cmp_name), 
-                      file=sys.stderr)
-                exit(1)
+        if SANITY_CHECK: # SANITY CHECK for rebuilding seqs
+            validation_check.validate_constructs(names,
+                                                 backbone_name,
+                                                 backbone_seq,
+                                                 Vars_,
+                                                 seqs)
 
         # Remap the backbone allele, which is sometimes slighly different from
         #   fasta version
@@ -1101,67 +968,14 @@ def extract_vars(base_fname,
                                 % (exon_left, exon_right, 'p' if primary else ''))
 
             # Sanity check for exonic sequence
-            sanity_check = True
-            if sanity_check \
+            if SANITY_CHECK \
                     and os.path.exists("hisatgenotype_db/%s/fasta/%s_nuc.fasta" \
                                             % (base_fname.upper(), gene)):
-                exons_ = []
-                for exon in exon_str.split(','):
-                    if exon.endswith('p'):
-                        exon = exon[:-1]
-                    exon_left, exon_right = exon.split('-')
-                    exon_left  = int(exon_left)
-                    exon_right = int(exon_right)
-                    exons_.append([exon_left, exon_right])
-
-                backbone_seq_ = backbone_seq.replace('.', '')
-                if ref_gene in Vars_:
-                    vars_ = Vars_[ref_gene]
-                else:
-                    vars_ = []
-                seq_ = list(backbone_seq_)
-                has_insertion = False
-                for var_ in vars_:
-                    var_pos, var_type, var_data = var_.split('-')
-                    var_pos = int(var_pos)
-                    assert var_pos >= 0 and var_pos < len(backbone_seq_)
-                    if var_type == 'M':
-                        seq_[var_pos] = var_data
-                    elif var_type == 'D':
-                        del_len = int(var_data)
-                        assert var_pos + del_len <= len(ref_seq)
-                        seq_[var_pos:var_pos + del_len] = ['.'] * del_len
-                    else:
-                        assert var_type == 'I'
-                        has_insertion = True
-
-                seq_ = ''.join(seq_)
-                exon_seq_ = ""
-                for exon_left, exon_right in exons_:
-                    exon_seq_ += seq_[exon_left:exon_right+1]
-                exon_seq_ = exon_seq_.replace('.', '').replace('~', '')
-                if gene_strand[gene] == '-':
-                    exon_seq_ = typing_common.reverse_complement(exon_seq_)
-
-                cmp_exon_seq_ = ""
-                allele_name_  = ""
-                for line in open("hisatgenotype_db/%s/fasta/%s_nuc.fasta" 
-                                    % (base_fname.upper(), gene)):
-                    if line.startswith(">"):
-                        if allele_name_ == ref_gene:
-                            break
-                        if base_fname == "hla":
-                            allele_name_ = line.strip().split()[1] 
-                        else:
-                            allele_name_ = line.strip().split()[0].replace('>','')
-                        cmp_exon_seq_ = ""
-                    else:
-                        cmp_exon_seq_ += line.strip()
-
-                if exon_seq_ != cmp_exon_seq_:
-                    print("Warning: exonic sequences do not match (%s)" 
-                            % gene, 
-                          file=sys.stderr)
+                validation_check.validate_exons(exon_str,
+                                                backbone_seq,
+                                                Vars_,
+                                                ref_gene,
+                                                ref_seq)
         else:
             exon_str = "%d-%d" % (left - left + 1, right - left + 1)
 
@@ -1218,8 +1032,8 @@ def extract_vars(base_fname,
             var2ID[keys[k]] = num_vars
             num_vars += 1
 
-        add_seq_len = 0
         # Write haplotypes
+        add_seq_len   = 0
         excluded_vars = set()
         var_leftmost  = sys.maxsize
         var_rightmost = -1
@@ -1306,26 +1120,19 @@ def extract_vars(base_fname,
             if not whole_haplotype:
                 haplotypes = split_haplotypes(haplotypes)
 
-            def cmp_haplotype(a, b):
-                a = a.split('#')
-                a1_locus, _, _ = a[0].split('-')
-                a2_locus, a2_type, a2_data = a[-1].split('-')
-                a_begin = int(a1_locus)
-                a_end   = int(a2_locus)
-                if a2_type == 'D':
-                    a_end += (int(a2_data) - 1)
-                b = b.split('#')
-                b1_locus, _, _ = b[0].split('-')
-                b2_locus, b2_type, b2_data = b[-1].split('-')
-                b_begin = int(b1_locus), 
-                b_end   = int(b2_locus)
-                if b2_type == 'D':
-                    b_end += (int(b2_data) - 1)
-                if a_begin != b_begin:
-                    return a_begin - b_begin
-                return a_end - b_end
+            def hapKey(x):
+                x = x.split('#')
+                x_srt, _, _ = x[0].split('-')
+                x_end, x_type, x_data = x[-1].split('-')
+                x_srt = int(x_srt)
+                x_end = int(x_end)
+                if x_type == 'D':
+                    x_end += (int(x_data) - 1)
+                return(x_srt, x_end)
 
-            haplotypes = sorted(list(haplotypes), cmp=cmp_haplotype)
+            haplotypes = sorted(list(haplotypes), key = hapKey)
+            if SANITY_CHECK: # SANITY CHECK for sorting
+                validation_check.validate_haplotype(haplotypes)
 
             # Write haplotypes
             sanity_vars = set()
@@ -1336,12 +1143,12 @@ def extract_vars(base_fname,
                     varIDs.append("hv%s" % var2ID[var])
                     sanity_vars.add(var2ID[var])
                 if whole_haplotype:
-                    h_begin = var_leftmost, 
+                    h_begin = var_leftmost
                     h_end   = var_rightmost
                 else:
                     h1_locus, _, _ = h[0].split('-')
                     h2_locus, h2_type, h2_data = h[-1].split('-')
-                    h_begin = int(h1_locus), 
+                    h_begin = int(h1_locus)
                     h_end   = int(h2_locus)
                     if h2_type == 'D':
                         h_end += (int(h2_data) - 1)
@@ -1370,7 +1177,6 @@ def extract_vars(base_fname,
                 num_haplotypes += 1
                 add_seq_len    += (h_end - h_begin + 1)
             assert len(sanity_vars) == len(cur_vars)
-                    
             i = j
 
         print(("Length of additional sequences for haplotypes:", add_seq_len), 
@@ -1385,7 +1191,6 @@ def extract_vars(base_fname,
                 print(seq[s:s+60], file=input_file)
             print(name, file=allele_file)
 
-                    
         # Write partial allele names
         for name in names:
             if name not in full_allele_names:
@@ -1479,37 +1284,14 @@ def extract_reads(base_fname,
         resource.setrlimit(resource.RLIMIT_NOFILE, (1000, 1000))
         resource.setrlimit(resource.RLIMIT_NPROC, (1000, 1000))
     
-    fname_list = {} # For use in Hisatgenotype script
-    genotype_fnames = ["%s.fa" % base_fname,
-                       "%s.locus" % base_fname,
-                       "%s.snp" % base_fname,
-                       "%s.haplotype" % base_fname,
-                       "%s.link" % base_fname,
-                       "%s.coord" % base_fname,
-                       "%s.clnsig" % base_fname]
-    # graph index files
-    if aligner == "hisat2":
-        genotype_fnames += ["%s.%d.ht2" % (base_fname, i+1) for i in range(8)]
-    else:
-        assert aligner == "bowtie2"
-        genotype_fnames = ["%s.%d.bt2" \
-                                % (base_fname, i+1) for i in range(4)]
-        genotype_fnames += ["%s.rev.%d.bt2" \
-                                % (base_fname, i+1) for i in range(2)]
-        
-    if not typing_common.check_files(genotype_fnames):        
-        print("Error: %s related files do not exist as follows:" \
-                % base_fname, 
-              file=sys.stderr)
-        for fname in genotype_fnames:
-            print("\t%s" % fname, 
-                  file=sys.stderr)
+    if not typing_common.check_base(base_fname, aligner):      
         sys.exit(1)
 
+    fname_list    = {} # For use in Hisatgenotype script
     filter_region = len(database_list) > 0
-    ranges      = []
-    regions     = {}
-    region_loci = {}
+    ranges        = []
+    regions       = {}
+    region_loci   = {}
     for line in open("%s.locus" % base_fname):
         family, allele_name, chr, left, right = line.strip().split()[:5]
         if filter_region and family.lower() not in database_list:
