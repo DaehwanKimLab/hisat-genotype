@@ -102,8 +102,8 @@ def create_consensus_seq(seqs,
             has_empty = True
             consensus_seq += 'E'
             continue
-        # if E >= 100.0 - min_var_freq: ## TODO revisit this removal
-        #     idx = 4                   ## Goal is to include only viable seqs
+        if E >= 100.0 - min_var_freq: ## TODO: Revisit necessity of this
+            idx = 4                   ## Goal is to include only viable seqs
         else:
             idx = freq.index(max([A, C, G, T]))
         assert idx < 5
@@ -222,6 +222,82 @@ def leftshift_deletions(backbone_seq,
 
     return ''.join(seq)
 
+""" Split haplotypes that include large gaps inside """
+def split_haplotypes(haplotypes, intra_gap):
+    split_haps = set()
+    for haplotype in haplotypes:
+        haplotype = haplotype.split('#')
+        assert len(haplotype) > 0
+        if len(haplotype) == 1:
+            split_haps.add(haplotype[0])
+            continue
+        prev_s, s = 0, 1
+        while s < len(haplotype):
+            prev_locus, prev_type, prev_data = haplotype[s-1].split('-')
+            locus, type, data = haplotype[s].split('-')
+            prev_locus = int(prev_locus)
+            locus      = int(locus)
+            if prev_type == 'D':
+                prev_locus += (int(prev_data) - 1)
+            if prev_locus + intra_gap < locus:
+                split_haps.add('#'.join(haplotype[prev_s:s]))
+                prev_s = s
+            s += 1
+            if s == len(haplotype):
+                split_haps.add('#'.join(haplotype[prev_s:s]))
+    return split_haps
+
+""" Check sequences are of equal length """
+def find_seq_len(seqs):
+    seq_lens = {}
+    for s in range(len(seqs)):
+        seq_len = len(seqs[s])
+        if seq_len not in seq_lens:
+            seq_lens[seq_len] = 1
+        else:
+            seq_lens[seq_len] += 1
+
+    max_seq_count = 0
+    for tmp_seq_len, tmp_seq_count in seq_lens.items():
+        if tmp_seq_count > max_seq_count:
+            seq_len       = tmp_seq_len
+            max_seq_count = tmp_seq_count
+    return seq_len
+
+""" Key for sorting Variants in POS-TYPE-INFO format """
+def key_varKey(x):
+    type_ord = {"I" : 0, "M" : 1, "D" : 2}
+    nt_order = {"A" : 0, "C" : 1, "G" : 2, "T" : 3}
+    def pat2num(nt):
+        if len(nt) == 0:
+            return 0
+        num = len(nt_order) * pat2num(nt[:-1]) + nt_order[nt[-1]]
+        return num
+
+    locus, type_, data = x.split("-")
+    locus = int(locus)
+    next_ = type_ord[type_]
+    if type_ == "D":
+        last_ = int(data)
+    else:
+        if len(data) > 1:
+            last_ = pat2num(data)
+        else:
+            last_ = nt_order[data]
+
+    return(locus, next_, last_)
+
+""" Key for sorting haplotypes in a String""" 
+def hapKey(x):
+    x = x.split('#')
+    x_srt, _, _ = x[0].split('-')
+    x_end, x_type, x_data = x[-1].split('-')
+    x_srt = int(x_srt)
+    x_end = int(x_end)
+    if x_type == 'D':
+        x_end += (int(x_data) - 1)
+    return(x_srt, x_end)
+
 """
 Main script to extract variants:
 Inputs: Fasta, MSF, dat file with allele sequences
@@ -274,6 +350,7 @@ def extract_vars(base_fname,
             continue
         gene_names.append(gene_name)
 
+    gene_names = typing_common.sort_genall(gene_names)
     if locus_list == []:
         locus_list = gene_names
 
@@ -456,7 +533,7 @@ def extract_vars(base_fname,
                 assert line.find("number")
                 look_exon_num = False
                 digits = [x for x in filter(str.isdigit, line)]
-                num    = int(digits[0])-1
+                num    = int("".join(digits))-1
                 if gene not in gene_exon_counts:
                     gene_exon_counts[gene] = {}
                 if num not in gene_exon_counts[gene]:
@@ -514,8 +591,12 @@ def extract_vars(base_fname,
     num_vars       = 0
     num_haplotypes = 0
     full_alleles   = {}
-    for gene, ref_gene in genes.items():
-        strand = gene_strand[gene]
+    for gene in gene_names:
+        if gene not in genes:
+            continue # Break if the gene was filtered above
+
+        ref_gene      = genes[gene]
+        strand        = gene_strand[gene]
         left_ext_seq  = ""
         right_ext_seq = ""
         if gene in left_ext_seq_dic:
@@ -534,28 +615,14 @@ def extract_vars(base_fname,
                   file=sys.stderr)
             continue
 
-        names, seqs = typing_common.read_MSF_file(MSA_fname, left_ext_seq, right_ext_seq)
-        full_allele_names = set(names.keys())
+        names, seqs = typing_common.read_MSF_file(MSA_fname,
+                                                  full_alleles, 
+                                                  left_ext_seq, 
+                                                  right_ext_seq)
+        full_allele_names   = set(names.keys())
 
         # Identify a consensus sequence
         assert len(seqs) > 0
-
-        # Check sequences are of equal length
-        def find_seq_len(seqs):
-            seq_lens = {}
-            for s in range(len(seqs)):
-                seq_len = len(seqs[s])
-                if seq_len not in seq_lens:
-                    seq_lens[seq_len] = 1
-                else:
-                    seq_lens[seq_len] += 1
-
-            max_seq_count = 0
-            for tmp_seq_len, tmp_seq_count in seq_lens.items():
-                if tmp_seq_count > max_seq_count:
-                    seq_len       = tmp_seq_len
-                    max_seq_count = tmp_seq_count
-            return seq_len
 
         seq_len       = find_seq_len(seqs)        
         backbone_name = "%s*BACKBONE" % gene
@@ -563,6 +630,7 @@ def extract_vars(base_fname,
                                                            seq_len,
                                                            min_var_freq,
                                                            not partial) # Remove empty sequences?
+        
         # Allele sequences can shrink, so readjust the sequence length
         if not partial:
             seq_len = find_seq_len(seqs)
@@ -574,8 +642,9 @@ def extract_vars(base_fname,
                 print("Warning: %s does not exist" % partial_MSA_fname, 
                       file=sys.stderr)
                 continue
-            partial_names, partial_seqs = typing_common.read_MSF_file(partial_MSA_fname)
-                
+            partial_names, partial_seqs = typing_common.read_MSF_file(partial_MSA_fname,
+                                                                      full_alleles)
+            
             ref_seq             = seqs[names[ref_gene]]
             ref_seq_map         = create_map(ref_seq)
             ref_partial_seq     = partial_seqs[partial_names[ref_gene]]
@@ -619,9 +688,10 @@ def extract_vars(base_fname,
                                                                  False) # Remove
                                                                         # empty 
                                                                         # sequences?
-                for name, seq_id in partial_names.items():
+                for name in partial_names:
                     if name in names:
                         continue
+                    seq_id  = partial_names[name]
                     seq     = partial_seqs[seq_id]
                     new_seq = ""
                     right   = 0
@@ -712,9 +782,9 @@ def extract_vars(base_fname,
             if base_fname in spliced_gene:
                 exons = []
                 for left, right in reversed(gene_exons[gene]):
-                    left  = ref_seq_len - right - 1
-                    right = ref_seq_len - left - 1
-                    exons.append([left, right])
+                    rleft  = ref_seq_len - right - 1
+                    rright = ref_seq_len - left - 1
+                    exons.append([rleft, rright])
                 gene_exons[gene] = exons
                 exon_counts      = {}
                 for exon_i, count in gene_exon_counts[gene].items():
@@ -753,6 +823,8 @@ def extract_vars(base_fname,
                       file=sys.stderr)
                 continue
 
+            # Insert Variants into Var dictionary variable
+            # Inherits 4 variables from above and shouldn't be moved
             def insertVar(type, info):
                 pos, backbone_pos, data = info
                 if type in "MI":
@@ -795,7 +867,7 @@ def extract_vars(base_fname,
 
             insertion = []
             deletion  = []
-            ndots = 0
+            ndots     = 0
             for s in range(seq_len):
                 assert not (insertion and deletion)
                 bc = backbone_seq[s]
@@ -837,20 +909,6 @@ def extract_vars(base_fname,
         print("Number of variants is %d." % (len(Vars.keys())), 
               file=sys.stderr)       
 
-        def varKey(x):
-            type_ord = {"I" : 0, "M" : 1, "D" : 2}
-            nt_order = {"A" : 0, "C" : 1, "G" : 2, "T" : 3}
-
-            locus, type_, data = x.split("-")
-            locus = int(locus)
-            next_ = type_ord[type_]
-            if type_ == "D":
-                last_ = int(data)
-            else:
-                last_ = nt_order[data]
-
-            return(locus, next_, last_)
-
         Vars_ = {}
         for key, values in Vars.items():
             freq, names_ = values
@@ -860,7 +918,7 @@ def extract_vars(base_fname,
                 else:
                     Vars_[name].append(key)
         for name, vars in Vars_.items():
-            Vars_[name] = sorted(vars, key=varKey)
+            Vars_[name] = sorted(vars, key=key_varKey)
 
             if SANITY_CHECK: # SANITY CHECK for sorting
                 validation_check.validate_variants(Vars_[name])
@@ -975,7 +1033,10 @@ def extract_vars(base_fname,
                                                 backbone_seq,
                                                 Vars_,
                                                 ref_gene,
-                                                ref_seq)
+                                                ref_seq,
+                                                gene_strand,
+                                                gene,
+                                                base_fname)
         else:
             exon_str = "%d-%d" % (left - left + 1, right - left + 1)
 
@@ -993,7 +1054,9 @@ def extract_vars(base_fname,
         #       (1) variants w.r.t the backbone sequences into a SNP file
         #       (2) pairs of a variant and the corresponding HLA allels 
         #               into a LINK file    
-        keys = sorted(Vars.keys(), cmp=cmp_varKey)
+        keys = sorted(Vars.keys(), key=key_varKey)
+        if SANITY_CHECK:
+            validation_check.validate_variants(keys)
         var2ID = {}
         for k in range(len(keys)):
             locus, type, data = keys[k].split('-')
@@ -1088,47 +1151,16 @@ def extract_vars(base_fname,
             cur_vars   = set(keys[i:j]) - excluded_vars
             for allele in alleles:
                 allele_vars = set(Vars_[allele]) - excluded_vars
-                allele_cur_vars = '#'.join(sorted(list(cur_vars & allele_vars), 
-                                                  cmp=cmp_varKey))
+                allele_var_sort = sorted(list(cur_vars & allele_vars), 
+                                         key=key_varKey)
+                if SANITY_CHECK:
+                    validation_check.validate_variants(allele_var_sort)
+
+                allele_cur_vars = '#'.join(allele_var_sort)
                 haplotypes.add(allele_cur_vars)
 
-            # Split some haplotypes that include large gaps inside
-            def split_haplotypes(haplotypes):
-                split_haplotypes = set()
-                for haplotype in haplotypes:
-                    haplotype = haplotype.split('#')
-                    assert len(haplotype) > 0
-                    if len(haplotype) == 1:
-                        split_haplotypes.add(haplotype[0])
-                        continue
-                    prev_s, s = 0, 1
-                    while s < len(haplotype):
-                        prev_locus, prev_type, prev_data = haplotype[s-1].split('-')
-                        locus, type, data = haplotype[s].split('-')
-                        prev_locus = int(prev_locus)
-                        locus      = int(locus)
-                        if prev_type == 'D':
-                            prev_locus += (int(prev_data) - 1)
-                        if prev_locus + intra_gap < locus:
-                            split_haplotypes.add('#'.join(haplotype[prev_s:s]))
-                            prev_s = s
-                        s += 1
-                        if s == len(haplotype):
-                            split_haplotypes.add('#'.join(haplotype[prev_s:s]))
-                return split_haplotypes
-
             if not whole_haplotype:
-                haplotypes = split_haplotypes(haplotypes)
-
-            def hapKey(x):
-                x = x.split('#')
-                x_srt, _, _ = x[0].split('-')
-                x_end, x_type, x_data = x[-1].split('-')
-                x_srt = int(x_srt)
-                x_end = int(x_end)
-                if x_type == 'D':
-                    x_end += (int(x_data) - 1)
-                return(x_srt, x_end)
+                haplotypes = split_haplotypes(haplotypes, intra_gap)
 
             haplotypes = sorted(list(haplotypes), key = hapKey)
             if SANITY_CHECK: # SANITY CHECK for sorting
@@ -1182,17 +1214,20 @@ def extract_vars(base_fname,
         print(("Length of additional sequences for haplotypes:", add_seq_len), 
               file=sys.stderr)
 
+        sorted_all_alleles = typing_common.sort_genall(list(names.keys()), 
+                                                       alleles = True)
+
         # Write all the sequences with dots removed into a file
-        for name, ID in names.items():
+        for name in sorted_all_alleles:
+            if name not in names:
+                continue
+            ID = names[name]
             print(">%s" % (name), file=input_file)
             assert ID < len(seqs)
             seq = seqs[ID].replace('.', '').replace('~', '')
             for s in range(0, len(seq), 60):
                 print(seq[s:s+60], file=input_file)
             print(name, file=allele_file)
-
-        # Write partial allele names
-        for name in names:
             if name not in full_allele_names:
                 print(name, file=partial_file)
 
@@ -1257,6 +1292,22 @@ def wait_pids(pids):
     for pid in pids:
         if pid > 0:
             os.waitpid(pid, 0)   
+
+""" Write reads to fasta or fastq file """
+def write_read(gzip_proc, 
+                read_name, 
+                seq, 
+                qual,
+                prev_read_name,
+                fastq):
+    if fastq:
+        gzip_proc.stdin.write("@%s\n" % read_name)
+        gzip_proc.stdin.write("%s\n" % seq)
+        gzip_proc.stdin.write("+\n")
+        gzip_proc.stdin.write("%s\n" % qual)
+    else:
+        gzip_proc.stdin.write(">%s\n" % prev_read_name)
+        gzip_proc.stdin.write("%s\n" % seq) 
 
 """
 Extract reads from given fastq(a) file
@@ -1425,6 +1476,7 @@ def extract_reads(base_fname,
                     # LP6005041-DNA_A01-extracted-1.fq.gz
                     gzip1_proc = subprocess.Popen(
                         ["gzip"],
+                        universal_newlines = True,
                         stdin=subprocess.PIPE,
                         stdout=open("%s%s-%s-extracted-1.fq.gz" \
                                         % (out_dir, 
@@ -1437,6 +1489,7 @@ def extract_reads(base_fname,
                     # LP6005041-DNA_A01-extracted-2.fq.gz
                     gzip2_proc = subprocess.Popen(
                         ["gzip"],
+                        universal_newlines = True,
                         stdin=subprocess.PIPE,
                         stdout=open("%s%s-%s-extracted-2.fq.gz" \
                                         % (out_dir, 
@@ -1450,6 +1503,7 @@ def extract_reads(base_fname,
                     # LP6005041-DNA_A01-extracted-fq.gz
                     gzip1_proc = subprocess.Popen(
                         ["gzip"],
+                        universal_newlines = True,
                         stdin=subprocess.PIPE,
                         stdout=open("%s%s-%s-extracted.fq.gz" \
                                         % (out_dir, 
@@ -1476,6 +1530,7 @@ def extract_reads(base_fname,
                             # LP6005041-DNA_A01.extracted.1.fq.gz
                             gzip1_proc = subprocess.Popen(
                                 ["gzip"],
+                                universal_newlines = True,
                                 stdin=subprocess.PIPE,
                                 stdout=open("%s%s-%s-%d_%dM-extracted-1.fq.gz" 
                                                 % (out_dir, 
@@ -1490,6 +1545,7 @@ def extract_reads(base_fname,
                             # LP6005041-DNA_A01.extracted.2.fq.gz
                             gzip2_proc = subprocess.Popen(
                                 ["gzip"],
+                                universal_newlines = True,
                                 stdin=subprocess.PIPE,
                                 stdout=open("%s%s-%s-%d_%dM-extracted-2.fq.gz" 
                                                 % (out_dir, 
@@ -1504,6 +1560,7 @@ def extract_reads(base_fname,
                             # LP6005041-DNA_A01.extracted.fq.gz
                             gzip1_proc = subprocess.Popen(
                                 ["gzip"],
+                                universal_newlines = True,
                                 stdin=subprocess.PIPE,
                                 stdout=open("%s%s-%s-%d_%dM-extracted.fq.gz" 
                                                 % (out_dir, 
@@ -1516,21 +1573,7 @@ def extract_reads(base_fname,
                             )
                         whole_gzip_dic[chr].append([gzip1_proc, 
                                                     gzip2_proc if paired \
-                                                                else None])
-
-
-            def write_read(gzip_proc, 
-                           read_name, 
-                           seq, 
-                           qual):
-                if fastq:
-                    gzip_proc.stdin.write("@%s\n" % read_name)
-                    gzip_proc.stdin.write("%s\n" % seq)
-                    gzip_proc.stdin.write("+\n")
-                    gzip_proc.stdin.write("%s\n" % qual)
-                else:
-                    gzip_proc.stdin.write(">%s\n" % prev_read_name)
-                    gzip_proc.stdin.write("%s\n" % seq)                    
+                                                                else None])                 
 
             prev_read_name     = ""
             extract_read       = set()
@@ -1578,12 +1621,16 @@ def extract_reads(base_fname,
                         write_read(gzip_dic[region][0], 
                                    prev_read_name, 
                                    read1[0], 
-                                   read1[1])
+                                   read1[1],
+                                   prev_read_name,
+                                   fastq)
                         if paired:
                             write_read(gzip_dic[region][1], 
                                        prev_read_name, 
                                        read2[0], 
-                                       read2[1])
+                                       read2[1],
+                                       prev_read_name,
+                                       fastq)
                             
                     for chr_region_num in whole_extract_read:
                         region_chr, region_num = chr_region_num.split('-')
@@ -1595,12 +1642,16 @@ def extract_reads(base_fname,
                         write_read(whole_gzip_dic[region_chr][region_num][0], 
                                    prev_read_name, 
                                    read1[0], 
-                                   read1[1])
+                                   read1[1],
+                                   prev_read_name,
+                                   fastq)
                         if paired:
                             write_read(whole_gzip_dic[region_chr][region_num][1], 
                                        prev_read_name, 
                                        read2[0], 
-                                       read2[1])
+                                       read2[1],
+                                       prev_read_name,
+                                       fastq)
 
                     prev_read_name     = read_name
                     extract_read       = set()
@@ -1650,12 +1701,16 @@ def extract_reads(base_fname,
                 write_read(gzip_dic[region][0], 
                            prev_read_name, 
                            read1[0], 
-                           read1[1])
+                           read1[1],
+                           prev_read_name,
+                           fastq)
                 if paired:
                     write_read(gzip_dic[region][1], 
                                prev_read_name, 
                                read2[0], 
-                               read2[1])
+                               read2[1],
+                               prev_read_name,
+                               fastq)
 
             for chr_region_num in whole_extract_read:
                 region_chr, region_num = chr_region_num.split('-')
@@ -1666,12 +1721,16 @@ def extract_reads(base_fname,
                 write_read(whole_gzip_dic[region_chr][region_num][0], 
                            prev_read_name, 
                            read1[0], 
-                           read1[1])
+                           read1[1],
+                           prev_read_name,
+                           fastq)
                 if paired:
                     write_read(whole_gzip_dic[region_chr][region_num][1], 
                                prev_read_name, 
                                read2[0], 
-                               read2[1])
+                               read2[1],
+                               prev_read_name,
+                               fastq)
 
             for gzip1_proc, gzip2_proc in gzip_dic.values():
                 gzip1_proc.stdin.close()

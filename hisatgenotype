@@ -365,7 +365,14 @@ def typing_process(args):
 
     # Parse debug options and parameters
     debug = {}
-    debug_opts = ["basic", "full", "pair", "test_list", "test_id", "single-end"]
+    debug_opts = ["basic",      # Run only single alleles
+                  "full",       # Run only full alleles
+                  "pair",       # Pair alleles
+                  "test_list",  # Give list of allele pairs to test
+                  "test_id",    # Only run Test IDs in this list
+                  "single-end", # Use single end synthetic reads
+                  "set_seed",   # Set seed for random selection
+                  "test_size"]  # Set size of test to run
     if args.debug != "":
         for item in args.debug.split(','):
             if ':' in item:

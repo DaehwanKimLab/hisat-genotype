@@ -100,6 +100,50 @@ def check_base(base_fname, aligner):
     
     return True
 
+""" Sorting key for Character Numeric pairings in genes """
+def key_sortGene(x):
+    digits = []
+    chars  = []
+    for y in x:
+        if y.isdigit():
+            digits.append(y)
+        else:
+            chars.append(y)
+    if not digits:
+        digits.append("-1")
+    if not chars:
+        chars.append("")
+
+    nums = int("".join(digits))
+    strs = "".join(chars)
+    return(strs, nums)
+
+def key_sortAllele(x):
+    gene, allele = x.split("*")
+    gen, val     = key_sortGene(gene)
+    allelefields = [int(re.sub('[^0-9]', '', f)) for f in allele.split(":")]
+    while len(allelefields) < 4:
+        allelefields.append(-1)
+
+    return tuple([gen, val] + allelefields)
+
+""" Sorting allele or gene names"""
+def sort_genall(list_, alleles = False):
+    try:
+        if alleles:
+            listsort = sorted(list_, key = key_sortAllele)
+        else:
+            listsort = sorted(list_, key = key_sortGene)
+    except Exception as execp:
+        print("Error in sorting list of alleles or genes!!!",
+              file=sys.stderr)
+        print(execp,
+              file=sys.stderr)
+        exit(1)
+
+    return listsort
+
+
 # --------------------------------------------------------------------------- #
 # Functions handling Alleles, variants, haplotypes, etc.                      #
 # --------------------------------------------------------------------------- #

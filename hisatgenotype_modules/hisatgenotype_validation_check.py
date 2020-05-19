@@ -270,8 +270,17 @@ def validate_exons(exon_str,
     if exon_seq_ != cmp_exon_seq_:
         print("Warning: exonic sequences do not match (%s)" 
                 % gene, 
-                file=sys.stderr) 
-        exit(1)
+               file=sys.stderr) 
+        if len(exon_seq_) > len(cmp_exon_seq_) and cmp_exon_seq_ in exon_seq_:
+            print("Warning: exonic sequences from file are smaller than rebuild",
+                file=sys.stderr)
+        elif len(cmp_exon_seq_) > len(exon_seq_) and exon_seq_ in cmp_exon_seq_:
+            print("Warning: exonic sequences from file are larger than rebuild",
+                file=sys.stderr)
+        else:
+            print("Warning: exonic sequences are not built properly",
+                file=sys.stderr)
+            exit(1)
 
 """ Check uniqueness of sequences in typing_common line ~ 1850"""
 def check_amb_uniqueness(cmp_list,

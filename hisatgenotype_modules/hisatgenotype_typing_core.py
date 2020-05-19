@@ -295,10 +295,9 @@ def typing(simulation,
     
     # Add version and command info to all report files
     version_dir = '/'.join(os.path.dirname(__file__).split('/')[:-1])
-    hg_version = open(version_dir + '/VERSION', 'r').read()
-    h2_version = open(version_dir + '/hisat2/VERSION', 'r').read()
-
-    cmd_call = ' '.join(sys.argv)
+    hg_version  = open(version_dir + '/VERSION', 'r').read()
+    h2_version  = open(version_dir + '/hisat2/VERSION', 'r').read()
+    cmd_call    = ' '.join(sys.argv)
 
     for f_ in msg_out:
         print("# VERSIONS:", 
@@ -311,6 +310,12 @@ def typing(simulation,
               file=f_)
         print("# COMMAND:\n%s" % cmd_call, 
               file=f_)
+        if base_fname == "genome":
+            print("\t" + locus_list, 
+                  file=f_)
+        else:
+            print("\t" + ' '.join(locus_list), 
+                  file=f_)
 
     # Begin Alignment for typing
     for aligner, index_type in aligners:
@@ -779,10 +784,6 @@ def typing(simulation,
                     line = line.strip()
                     cols = line.split()
                     read_id, flag, chr, pos, mapQ, cigar_str = cols[:6]
-
-                    ### TODO CB DEBUG
-                    if read_id == "507|R_2339_99M2D1M_32|S|hv5675,34|S|hv5681,29|S|hv5686,1|D|hv5687":
-                        print("HERE")
 
                     node_read_id = orig_read_id = read_id
                     if simulation:
@@ -2405,48 +2406,50 @@ def genotyping_locus(base_fname,
             Gene_lengths[Gene_gene][allele_name] = len(seq)
 
     # Test typing
-    test_list = []
     if simulation:
-        basic_test, pair_test = True, False
-        if debug_instr and "pair" in debug_instr:
-            basic_test, pair_test = False, True
-
+        basic_test  = True
+        pair_test   = False
+        test_size   = 200
+        ranseed     = None
         test_passed = {}
-        test_list = []
-        genes = list(set(locus_list) & set(Gene_names.keys()))
-        if basic_test:
+        test_list   = []
+        if debug_instr:
+            if "pair" in debug_instr:
+                basic_test = False
+                pair_test  = True
+            if "test_size" in debug_instr:
+                test_size  = int(debug_instr["test_size"])
+            if "set_seed" in debug_instr:
+                ranseed    = debug_instr["set_seed"]
+            if "test_list" in debug_instr:
+                test_list  = [[debug_instr["test_list"].split('-')]]
+
+        if not test_list:
+            genes     = list(set(locus_list) & set(Gene_names.keys()))
+            test_list = [[] for x in range(test_size)]            
+            if basic_test:
+                allele_count = 1
+            elif pair_test:
+                allele_count = 2
+
             for gene in genes:
-                Gene_gene_alleles = Gene_names[gene]
-                for allele in Gene_gene_alleles:
-                    if allele.find("BACKBONE") != -1:
-                        continue
-                    test_list.append([[allele]])
-                random.shuffle(test_list)
-        if pair_test:
-            test_size = 200
-            allele_count = 2
-            for test_i in range(test_size):
-                test_pairs = []
-                for gene in genes:
-                    Gene_gene_alleles = []
+                Gene_gene_alleles = deepcopy(Gene_names[gene])
+                Gene_gene_alleles.remove(gene + "*BACKBONE")
 
-                    for allele in Gene_names[gene]:
-                        if allele.find("BACKBONE") != -1:
-                            continue
+                random.seed(ranseed)
+                arr_loci = random.sample(range(len(Gene_gene_alleles)), 
+                                         test_size * allele_count)
 
-                        if "full" in debug_instr:
-                            if allele in partial_alleles:
-                                continue
-
-                        Gene_gene_alleles.append(allele)
-                    nums = [i for i in range(len(Gene_gene_alleles))]
-                    random.shuffle(nums)
-                    test_pairs.append(sorted([Gene_gene_alleles[nums[i]] \
-                                                for i in range(allele_count)]))
-                test_list.append(test_pairs)
-
-        if "test_list" in debug_instr:
-            test_list = [[debug_instr["test_list"].split('-')]]
+                for arr_i in range(0, len(arr_loci), allele_count):
+                    test_set = []
+                    allele_1 = Gene_gene_alleles[arr_loci[arr_i]]
+                    allele_2 = Gene_gene_alleles[arr_loci[arr_i + allele_count - 1]]
+                    if basic_test:
+                        test_set.append([allele_1])
+                    else:
+                        assert pair_test
+                        test_set.append(sorted([allele_1, allele_2]))
+                    test_list[int(arr_i/allele_count)] += test_set
 
         for test_i in range(len(test_list)):
             if "test_id" in debug_instr:
@@ -2535,17 +2538,24 @@ def genotyping_locus(base_fname,
                                      dbversion,
                                      test_i)
 
+            didpass = False
             for aligner_type, passed in tmp_test_passed.items():
                 if aligner_type in test_passed:
                     test_passed[aligner_type] += passed
                 else:
                     test_passed[aligner_type] = passed
 
+                didpass = True
+
+            if didpass:
                 print("\t\tPassed so far: %d/%d (%.2f%%)" 
                        % (test_passed[aligner_type], 
                           test_i + 1, 
                           (test_passed[aligner_type] * 100.0 / (test_i + 1))), 
                        file=sys.stderr)
+            else:
+                print("Test Failed!",
+                      file=sys.stderr)
 
 
         for aligner_type, passed in test_passed.items():
