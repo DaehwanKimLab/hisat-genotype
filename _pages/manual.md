@@ -24,9 +24,14 @@ We use [HISAT2] for graph representation and alignment, which is currently the m
 [HISAT2]:          http://ccb.jhu.edu/software/hisat2
 
 ## Requirements
+### List
++ Python 3<
++ Samtools 1.3<
++ C++ Compiler
 
-HISAT-genotype is encoded in python2 and contains standard python libraries. A
-python 2.7 release is recommended. Additional software required is [Samtools]
+### Description
+HISAT-genotype is encoded in __PYTHON 3__ and contains standard python libraries. A
+python 3.7 release is recommended. Additional software required is [Samtools]
 version 1.3 or later.
 
 Building HISAT2 from source requires a GNU-like environment with GCC, GNU Make
