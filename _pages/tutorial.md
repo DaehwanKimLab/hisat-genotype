@@ -26,44 +26,30 @@ This tutorial is under active development and subject to change at any time.
 ## Initial Setup
 We use HISAT2 for graph representation and alignment, which is currently the most practical and quickest program available. We refer to hisat-genotype-top as our top directory where all of our programs are located. hisat-genotype-top is a place holder that you can change to whatever name you’d like to use.
 
-In order to install HISAT2, please run the following commands.
+In order to install HISAT2, please run the following commands for automated installation (Mac/Linux using Bash). For manual installation please see the Manual.
 
 ```bash
- $ git clone https://github.com/DaehwanKimLab/hisat-genotype hisat-genotype
- $ cd hisat-genotype
- hisat-genotype-top$ git checkout hisatgenotype_v1.1.3
- $ make hisat2-align-s hisat2-build-s hisat2-inspect-s
-```
-
-Add the above directory (hisat-genotype) to your PATH environment variable (e.g. ~/.bashrc) to make the binaries we just built above and other python scripts available everywhere:
-
-```bash
- export PATH=hisat-genotype:hisat-genotype/hisatgenotype_scripts:$PATH
- export PYTHONPATH=hisat-genotype/hisatgenotype_modules:$PYTHONPATH
-```
-
-After that, you may have to run the following command to reflect the change,
-
-```bash
- $ source ~/.bashrc
+git clone https://github.com/DaehwanKimLab/hisat-genotype.git ~/hisatgenotype
+cd hisatgenotype
+bash setup.sh
 ```
 
 Create a directory where we perform our analysis for HLA typing and assembly, which we will refer to as hla-analysis. hla-analysis is a place holder that you can change to whatever name you’d like to use.
 
 ```bash
- $ mkdir hla-analysis
+mkdir hla-analysis
 ```
 
 Change the current directory to hla-analysis.
 
 ```bash
- $ cd hla-analysis
+cd hla-analysis
 ```
 
 Additional program requirements:
 
 ```bash
- SAMtools (version 1.3 or later)
+SAMtools (version 1.3 or later)
 ```
 
 ## Downloading or Building a Graph Reference and Index
@@ -72,13 +58,11 @@ The graph reference we are going to build incorporates variants of numerous HLA 
 We provide a pre-built graph reference and index here, which you can download as follows.
 
 ```bash
- hla-analysis$ wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat-genotype/data/genotype_genome_20180128.tar.gz
- hla-analysis$ tar xvzf genotype_genome_20180128.tar.gz
+wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat-genotype/data/genotype_genome_20180128.tar.gz
+tar xvzf genotype_genome_20180128.tar.gz
 ```
 
 Or alternatively, if you want to build a graph reference, please refer to the Building a graph reference.
-
-
 
 ## Typing and Assembly
 HISAT-genotype performs both HLA typing and assembly and now had read extraction and database management built in. The following steps are a simple methodology for typing HLA gene using a test set of reads we provide. The reads are from Illumina Platinum Genomes, which include 17 individuals with the CEPH pedigree 1463.
@@ -86,14 +70,14 @@ HISAT-genotype performs both HLA typing and assembly and now had read extraction
 The following scrip downloads the test dataset. Alternatively, you can use your own data in place of the ILMN files.
 
 ```bash
- hla-analysis$ wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat-genotype/data/hla/ILMN.tar.gz
- hla-analysis$ tar xvzf ILMN.tar.gz
+wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat-genotype/data/hla/ILMN.tar.gz
+tar xvzf ILMN.tar.gz
 ```
 
 You can perform HLA typing and assembly for HLA-A gene on sequencing reads from a genome, NA12892 (Illumina's HiSeq 2000 platform).
 
 ```bash
- hla-analysis$ hisatgenotype --base hla --locus-list A -1 ILMN/NA12892.extracted.1.fq.gz -2 ILMN/NA12892.extracted.2.fq.gz
+hisatgenotype --base hla --locus-list A -1 ILMN/NA12892.extracted.1.fq.gz -2 ILMN/NA12892.extracted.2.fq.gz
 ```
 
 Even though the ILMN data is already preextracted for HLA, HISAT-genotype will attempt to extract the reads and place them in a new folder. Note that you can add more loci to the `--locus-list` option above. EX `--locus-list A,B,C,DRB1,DQA1`
@@ -101,6 +85,7 @@ Even though the ILMN data is already preextracted for HLA, HISAT-genotype will a
 You can add the `--assembly` option to get HISAT-genotype to assemble the reads into alleles.
 
 ## Interpreting Output
+Output will be found by default in a folder called *hisatgenotype_out*.
 ### Typing Output
 ```bash
 Number of reads aligned: 1507

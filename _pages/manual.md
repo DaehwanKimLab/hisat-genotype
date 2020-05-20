@@ -52,25 +52,44 @@ builds since these are coming already prepared with most of the toolchains neede
 [Xcode]: https://developer.apple.com/Xcode
 [Samtools]: https://www.htslib.org
 
-## Downloading HISAT-genotype and Building HISAT2 from source
+## Automated Install - (Mac/Linux)
+This is a simple automated method for installing and getting HISAT-genotype setup on a Linux/Mac system using Bash.
+Replace the ~ which whichever directory you'd like to store HISAT-genotype in.
+
+```bash
+git clone https://github.com/DaehwanKimLab/hisat-genotype.git ~/hisatgenotype
+cd hisatgenotype
+bash setup.sh
+```
+
+Setup was successful using the following commands:
+```bash
+hisatgenotype --help
+hisat2 --help
+```
+
+If there is an error then something did not set-up properly and you'll need to run a manual install
+
+## Manual Install - (Mac/Linux/Windows)
+### Downloading HISAT-genotype and Building HISAT2 from source
 This download example will place HISAT-genotype in your home (~) directory if you are using a linux system. 
 Change the ~ to whichever directory you desire if this is not the behavior you want.
 
 ```bash
-$ git clone https://github.com/DaehwanKimLab/hisat-genotype ~/hisat-genotype
-$ cd ~/hisat-genotype
-hisat-genotype$ git checkout hisatgenotype_v1.1.3
+git clone --recurse-submodules https://github.com/DaehwanKimLab/hisat-genotype ~/hisatgenotype
+cd ~/hisatgenotype/hisat2
+
 $ make hisat2-align-s hisat2-build-s hisat2-inspect-s
 ```
 
-## Adding HISAT-genotype to PATH
+### Adding HISAT-genotype to PATH
 Add the above directory (hisat-genotype) to your PATH environment variable
 (e.g. ~/.bashrc) to make the binaries built above and other python scripts
 available everywhere:
 
 ```bash
-$ export PATH=~/hisat-genotype:~/hisat-genotype/hisatgenotype_scripts:$PATH
-$ export PYTHONPATH=~/hisat-genotype/hisatgenotype_modules:$PYTHONPATH
+$ export PATH=~/hisatgenotype:~/hisatgenotype/hisat2:$PATH
+$ export PYTHONPATH=~/hisatgenotype/hisatgenotype_modules:$PYTHONPATH
 ```
 
 ---
