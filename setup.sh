@@ -19,8 +19,29 @@
 # along with HISAT-genotype.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# Set working directory
+# Set working directory and argument types using getopts
 HG_DIR=$(pwd)
+OPTIND=1
+GET_REF=YES
+OMMIT_BASH=NO
+while getopts "hrb:" opt; do
+    case "$opt" in
+        h) 
+            echo "USAGE: setup.sh -hrb"
+            echo " -h : Show this help screen"
+            echo " -r : Download the base references for HISAT-genotype (Default - True)"
+            echo " -b : Ommit adding PATH to .bashrc or .bash_profile file (Defualt - False)"
+            exit 0
+            ;;
+        r) GET_REF=YES
+            ;;
+        b) OMMIT_BASH=YES
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+[ "${1:-}" = "--" ] && shift
 
 add_to_bash(){
     echo "Adding to $1 and sourcing"
@@ -31,7 +52,7 @@ add_to_bash(){
 
 # Files to check for
 DOWNLOADED="hisat2.cpp"
-BUILT="hisat2-align-s"
+BUILT="hisat2-align"
 BASHRC=~/.bashrc
 BASH_PROFILE=~/.bash_profile
 
@@ -40,26 +61,51 @@ echo "Setting up HISAT2"
 # Move to hisat2 submodule directory
 cd hisat2
 
-if test ! -f "$BUILT"; then
-    if test ! -f "$DOWNLOADED"; then
-        echo "> Gathering Module"
-        git sumbodule init
-        git submodule update
-
+if ! command -v hisat2 &> /dev/null; then
+    echo "> No HISAT2 found on system"
+    if test ! -f "$BUILT"; then
+        if test ! -f "$DOWNLOADED"; then
+            echo "> Gathering Module"
+            git submodule init
+            git submodule update
+        fi
     fi
-
     echo "> Initiating Build"
-    make hisat2-align-s hisat2-build-s hisat2-inspect-section
+    make
 fi
 
 # Return to hisatgenotype directory
 cd ../
 
+# Download all references for HISAT-genotype
+if [  "$GET_REF" == "YES" ]; then
+    mkdir references
+    cd references
+
+    # genotype_genome
+    wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat-genotype/data/genotype_genome_20180128.tar.gz
+    tar xvzf genotype_genome_20180128.tar.gz
+    rm genotype_genome_20180128.tar.gz
+
+    #grch38
+    wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat2/data/grch38.tar.gz
+    tar xvzf grch38.tar.gz
+    rm grch38.tar.gz
+    hisat2-inspect grch38/genome > genome.fa
+    samtools faidx genome.fa
+
+    #HISATgenotpye Database
+    git clone https://github.com/DaehwanKimLab/hisatgenotype_db.git
+    cd ../
+fi
+
 # Add PATH lines to BASH
-if test -f "$BASHRC"; then
-    add_to_bash "$BASHRC"
-elif test -f "$BASH_PROFILE"; then
-    add_to_bash "$BASH_PROFILE"
-else
-    add_to_bash "$BASHRC"
+if [ "$OMMIT_BASH" == "NO" ]; then
+    if test -f "$BASHRC"; then
+        add_to_bash "$BASHRC"
+    elif test -f "$BASH_PROFILE"; then
+        add_to_bash "$BASH_PROFILE"
+    else
+        add_to_bash "$BASHRC"
+    fi
 fi
