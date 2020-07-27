@@ -2210,6 +2210,7 @@ def read_Gene_vars_genotype_genome(fname, refGene_loci):
 def genotyping_locus(base_fname,
                      locus_list,
                      genotype_genome,
+                     ix_dir,
                      only_locus_list,
                      partial,
                      aligners,
@@ -2239,6 +2240,7 @@ def genotyping_locus(base_fname,
                      debug_instr):
     assert isinstance(base_fname, basestring)
     assert not ',' in base_fname
+    assert os.path.exists(ix_dir)
 
     dbversion       = ''
     refGenes        = {}
@@ -2246,8 +2248,7 @@ def genotyping_locus(base_fname,
     Genes           = {}
     alleles         = set()
     partial_alleles = set()
-    simulation      = (read_fname == [] and alignment_fname == "")
-    genome_name     = genotype_genome if genotype_genome != '' else base_fname       
+    simulation      = (read_fname == [] and alignment_fname == "") 
     if genotype_genome:
         # Check if the pre-existing files (hla*) are compatible with the current
         # parameter setting
@@ -2271,65 +2272,68 @@ def genotyping_locus(base_fname,
             if delete_hla_files:
                 os.system("rm %s*" % base_fname)
 
+        full_gg_path = ix_dir + genotype_genome
         # Extract variants, backbone sequence, and other sequeces  
-        genome_fnames = [genotype_genome + ".fa",
-                         genotype_genome + ".fa.fai",
-                         genotype_genome + ".locus",
-                         genotype_genome + ".snp",
-                         genotype_genome + ".index.snp",
-                         genotype_genome + ".haplotype",
-                         genotype_genome + ".link",
-                         genotype_genome + ".clnsig",
-                         genotype_genome + ".coord",
-                         genotype_genome + ".allele",
-                         genotype_genome + ".partial"]
+        genome_fnames = [full_gg_path + ".fa",
+                         full_gg_path + ".fa.fai",
+                         full_gg_path + ".locus",
+                         full_gg_path + ".snp",
+                         full_gg_path + ".index.snp",
+                         full_gg_path + ".haplotype",
+                         full_gg_path + ".link",
+                         full_gg_path + ".clnsig",
+                         full_gg_path + ".coord",
+                         full_gg_path + ".allele",
+                         full_gg_path + ".partial"]
         for i in range(8):
-            genome_fnames.append(genotype_genome + ".%d.ht2" % (i+1))
+            genome_fnames.append(full_gg_path + ".%d.ht2" % (i+1))
 
         if not typing_common.check_files(genome_fnames):
             print("Error: index files missing", file=sys.stderr)
             sys.exit(1)
 
         # Read alleles
-        for line in open("%s.allele" % genotype_genome):
+        for line in open("%s.allele" % full_gg_path):
             family, allele_name = line.strip().split('\t')
             if family == base_fname:
                 alleles.add(allele_name)
 
         # Read partial alleles
-        for line in open("%s.partial" % genotype_genome):
+        for line in open("%s.partial" % full_gg_path):
             family, allele_name = line.strip().split('\t')
             if family == base_fname:
                 partial_alleles.add(allele_name)
         
         # Read alleles (names and sequences)
-        typing_common.read_locus("%s.locus" % genome_name,
+        typing_common.read_locus("%s.locus" % full_gg_path,
                                  True, # this is the genotype genome
                                  base_fname,
                                  refGenes,
                                  refGene_loci)
 
         # Read variants, and link information
-        Vars, Var_list = read_Gene_vars_genotype_genome("%s.snp" % genotype_genome, refGene_loci)
-        Links = typing_common.read_links("%s.link" % genotype_genome)
+        Vars, Var_list = read_Gene_vars_genotype_genome("%s.snp" % full_gg_path, refGene_loci)
+        Links = typing_common.read_links("%s.link" % full_gg_path)
 
         # Read allele sequences
-        read_backbone_alleles(genotype_genome, refGene_loci, Genes)
+        read_backbone_alleles(full_gg_path, refGene_loci, Genes)
         read_Gene_alleles_from_vars(Vars, Var_list, Links, Genes)
 
     else:
         # Download human genome and HISAT2 index
-        typing_common.clone_hisatgenotype_database()
-        typing_common.download_genome_and_index()  
+        typing_common.clone_hisatgenotype_database(ix_dir)
+        typing_common.download_genome_and_index(ix_dir)  
 
         typing_common.extract_database_if_not_exists(base_fname,
                                                      only_locus_list,
+                                                     ix_dir,
                                                      30,           # inter_gap
                                                      50,           # intra_gap
                                                      partial,
                                                      verbose >= 1)        
         for aligner, index_type in aligners:
             typing_common.build_index_if_not_exists(base_fname,
+                                                    ix_dir,
                                                     aligner,
                                                     index_type,
                                                     threads,
@@ -2349,7 +2353,7 @@ def genotyping_locus(base_fname,
                 refGenes[region_name] = region_name
                 refGene_loci[region_name] = [region_name, chr, left, right, []]
         else:
-            typing_common.read_locus("%s.locus" % genome_name,
+            typing_common.read_locus("%s.locus" % base_fname,
                                      False, # this is not the genotype genome
                                      base_fname,
                                      refGenes,
@@ -2364,8 +2368,8 @@ def genotyping_locus(base_fname,
         read_Gene_alleles_from_vars(Vars, Var_list, Links, Genes)
 
     # Get database version if exsists
-    if os.path.exists(genome_name + ".version"):
-        dbversion = open(genome_name + ".version", 'r').read()
+    if os.path.exists(base_fname + ".version"):
+        dbversion = open(base_fname + ".version", 'r').read()
     else:
         dbversion = "NONE"
     

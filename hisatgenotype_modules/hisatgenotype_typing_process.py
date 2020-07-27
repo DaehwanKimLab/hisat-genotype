@@ -304,7 +304,7 @@ Inputs: Fasta, MSF, dat file with allele sequences
 Outputs: HISAT-genotype formatted database
 """
 def extract_vars(base_fname,
-                 base_dname,
+                 ix_dir,
                  locus_list,
                  inter_gap,
                  intra_gap,
@@ -315,13 +315,10 @@ def extract_vars(base_fname,
                  partial,
                  verbose):
 
-    base_fullpath_name = base_fname
-    if base_dname != "" and not os.path.exists(base_dname):
-        os.mkdir(base_dname)
-        base_fullpath_name = "%s/%s" % (base_dname, base_fname)
+    base_fullpath_name = ix_dir + base_fname
 
     # Download human genome and HISAT2 index
-    typing_common.download_genome_and_index()
+    typing_common.download_genome_and_index(ix_dir)
 
     # CB TODO: Make this read from a file or read the gen in the file name
     spliced_gene   = ['hla', 'rbg']
@@ -1315,7 +1312,8 @@ Extract reads from given fastq(a) file
 General Input: HISAT-genotype genome, base information, fastq(a) files
 Output: Reads aligning to base region from genotype genome
 """
-def extract_reads(base_fname,
+def extract_reads(base_fname,    # Base file name of genome to use
+                  ix_dir,
                   database_list,
                   read_dir,
                   out_dir,
@@ -1334,9 +1332,13 @@ def extract_reads(base_fname,
     if block_size > 0:
         resource.setrlimit(resource.RLIMIT_NOFILE, (1000, 1000))
         resource.setrlimit(resource.RLIMIT_NPROC, (1000, 1000))
-    
-    if not typing_common.check_base(base_fname, aligner):      
-        sys.exit(1)
+
+    if not typing_common.check_base(base_fname, aligner, ix_dir):
+        if base_fname == "genotype_genome":
+            print("Downloading genotype_genome into %s" % ix_dir)
+            typing_common.download_genotype_genome(ix_dir)
+        else:
+            exit(1)
 
     fname_list    = {} # For use in Hisatgenotype script
     filter_region = len(database_list) > 0
@@ -1413,7 +1415,7 @@ def extract_reads(base_fname,
         else:
             fq_fname2 = ""
 
-        # Process database and if files exsist do not reextract
+        # Process database and if files exist do not reextract
         omit_extract = True
         for database in database_list:
             if database not in fname_list:
@@ -1439,13 +1441,13 @@ def extract_reads(base_fname,
         print("\t%d: Extracting reads from %s" \
                   % (count, fq_fname_base), 
               file=sys.stderr)
+        
         def work(fq_fname_base,
                  fq_fname, 
                  fq_fname2, 
                  ranges,
                  simulation,
                  verbose):
-            
             aligner_cmd = [aligner]
             if threads_aprocess > 1:
                 aligner_cmd += ["-p", "%d" % threads_aprocess]

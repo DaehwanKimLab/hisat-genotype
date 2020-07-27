@@ -65,6 +65,7 @@ l = multiprocessing.Lock()
 # --------------------------------------------------------------------------- #
 """ Extract Variants from hisatgenotype database """
 def run_vars(base_fname,
+            ix_dir,
             threads,
             locus_list,
             inter_gap,
@@ -76,7 +77,7 @@ def run_vars(base_fname,
             partial,
             verbose):
     # Clone hisatgenotype database from git
-    typing_common.clone_hisatgenotype_database()
+    typing_common.clone_hisatgenotype_database(ix_dir)
     
     if not base_fname:
         base_fname = []
@@ -87,16 +88,9 @@ def run_vars(base_fname,
 
     pool = multiprocessing.Pool(int(threads), initializer=init, initargs=(l,))
     for base in base_fname:
-        if base.find('/') != -1:
-            elems      = base.split('/')
-            base       = elems[-1]
-            base_dname = '/'.join(elems[:-1])
-        else:
-            base_dname = ""        
-
         err = pool.apply_async(extract_vars, 
                                args=(base,
-                                     base_dname,
+                                     ix_dir,
                                      locus_list,
                                      inter_gap,
                                      intra_gap,
@@ -142,7 +136,7 @@ def reads_from_bam(bam_fname,
     if not os.path.exists(out_read_dname):
         os.mkdir(out_read_dname)
     lock.release()
-        
+
     read_fnames = []
     if paired:
         read_fnames = [out_read_dname + "/" + read_base_fname + "-extracted-1.fq.gz",
@@ -192,7 +186,10 @@ def reads_from_bam(bam_fname,
                                       stdout=subprocess.PIPE,
                                       stderr=open("/dev/null", 'w'))
 
-    prev_read_name, extract_read, read1, read2 = "", False, [], []
+    prev_read_name = ""
+    extract_read   = False
+    read1          = []
+    read2          = []
     for line in alignview_proc.stdout:
         if line.startswith('@'):
             continue
@@ -242,6 +239,7 @@ def reads_from_bam(bam_fname,
 """ Extract reads from BAM alignment files in range of locus """
 def extract_bam(file_lists,
                 base,
+                ix_dir,
                 out_dir,
                 target_locus_list,
                 fastq,
@@ -250,7 +248,7 @@ def extract_bam(file_lists,
                 aligner,
                 verbose):
     # variants, backbone sequence, and other sequeces
-    if not typing_common.check_base(base, aligner):
+    if not typing_common.check_base(base, aligner, ix_dir):
         sys.exit(1)
 
     # Read locus alleles (names and sequences)
@@ -310,7 +308,6 @@ def extract_bam(file_lists,
 
         print("\n", file=sys.stderr)
 
-
 # --------------------------------------------------------------------------- #
 # Main function for typing. Requires all arguments in a Namespace that can    #
 # be parsed                                                                   #
@@ -365,34 +362,31 @@ def typing_process(args):
 
     # Parse debug options and parameters
     debug = {}
-    debug_opts = ["basic",      # Run only single alleles
-                  "full",       # Run only full alleles
-                  "pair",       # Pair alleles
-                  "test_list",  # Give list of allele pairs to test
-                  "test_id",    # Only run Test IDs in this list
-                  "single-end", # Use single end synthetic reads
-                  "set_seed",   # Set seed for random selection
-                  "test_size"]  # Set size of test to run
+    debug_opts = set(["basic",      # Run only single alleles
+                      "full",       # Run only full alleles
+                      "pair",       # Pair alleles
+                      "test_list",  # Give list of allele pairs to test
+                      "test_id",    # Only run Test IDs in this list
+                      "single-end", # Use single end synthetic reads
+                      "set_seed",   # Set seed for random selection
+                      "test_size"])  # Set size of test to run
     if args.debug != "":
         for item in args.debug.split(','):
-            if ':' in item:
+            if item not in debug_opts:
+                print("Warning: %s not valid option for debug" % item, 
+                      file=sys.stderr)
+                exit(1)
+            elif ':' in item:
                 fields = item.split(':')
                 assert len(fields) >= 2
                 key, value = fields[0], ':'.join(fields[1:])
                 debug[key] = value
             else:
                 debug[item] = 1
-        for item in debug:
-            if item not in debug_opts:
-                print("Warning: %s not valid option for debug" % item, 
-                      file=sys.stderr)
-                exit(1)
-            else:
-                continue
 
     # Advanced setting alerts for users
     if not args.partial:
-        print("Warning: --no-partial should be used for debugging purpose only.",
+        print("Warning: --no-partial is recommended for debugging purpose only",
               file=sys.stderr)
 
     if args.read_len * 2 > args.fragment_len:
@@ -430,6 +424,13 @@ def typing_process(args):
 
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)
+    
+    if not os.path.exists(args.ix_dir):
+        print("Error: directory %s not found")
+        exit(1)
+
+    if args.ix_dir[-1] != "/":
+        args.ix_dir += "/"
 
     if args.read_dir:
         if '/' != args.read_dir[-1]:
@@ -438,12 +439,15 @@ def typing_process(args):
     """ Read Extraction: Optional selection performed by default """
     is_bam        = False
     single_run    = False
+    paired        = args.paired
     read_fnames   = [] 
     fq_fname_base = {}
     if args.debug == "":
         if args.read_fname_U != "":
-            read_fnames = ['%s%s' % (args.read_dir, args.read_fname_U)]
-            single_run = True
+            read_fnames     = ['%s%s' % (args.read_dir, args.read_fname_U)]
+            single_run      = True
+            paired          = False
+            args.discordant = True        
         elif args.read_fname_1 != "" or args.read_fname_2 != "":
             if args.read_fname_1 == "" or args.read_fname_2 == "":
                 print("Error: please specify both -1 and -2.", 
@@ -452,6 +456,10 @@ def typing_process(args):
             read_fnames = ['%s%s' % (args.read_dir, args.read_fname_1), 
                            '%s%s' % (args.read_dir, args.read_fname_2)]
             single_run = True
+            if not paired:
+                print("Warning! Using --single-end with -1 and -2 options. "\
+                         "Ignoring!")
+            paired     = True
         elif args.alignment_fname != "":
             alignment_fnames = ['%s%s' % (args.read_dir, args.alignment_fname)]
             is_bam = True
@@ -463,18 +471,6 @@ def typing_process(args):
                 sys.exit(1)
             alignment_fnames = glob.glob("./%s/*.bam" % (args.read_dir))
             is_bam = True if alignment_fnames else False
-
-        if args.read_fname_U != "":
-            paired          = False
-            args.discordant = True
-        else:
-            paired = args.paired
-            if (args.read_fname_1 != "" and args.read_fname_2 != "") \
-                    and not paired:
-                print("Error: Don't set --single-end when using -1 and -2 \
-                            options.",
-                      file=sys.stderr)
-                exit(1)
 
         if not args.already_extract:
             # Geno_genome is only needed for extract reads
@@ -489,6 +485,7 @@ def typing_process(args):
                     job_range.append(int(num))
 
                 fq_fname_base = extract_reads(geno_genome,
+                                              args.ix_dir,
                                               args.base_fname,
                                               "" if single_run else args.read_dir,
                                               args.out_dir,
@@ -512,6 +509,7 @@ def typing_process(args):
                     err = pool.apply_async(extract_bam,
                                            args = (fq_fname_base,
                                                    geno_genome,
+                                                   args.ix_dir,
                                                    args.out_dir,
                                                    region_list,
                                                    args.fastq,
@@ -541,6 +539,7 @@ def typing_process(args):
 
     if args.force_build_index:
         run_vars(args.base_fname,
+                args.ix_dir,
                 args.threads,
                 [], # Empty Locus-list
                 args.inter_gap,
@@ -569,6 +568,7 @@ def typing_process(args):
             genotyping_locus(base,
                              loci if not only_locus_list else only_locus_list,
                              args.genotype_genome,
+                             args.ix_dir,
                              only_locus_list,
                              args.partial,
                              args.aligner,
@@ -690,7 +690,8 @@ if __name__ == '__main__':
         epilog='See --advanced-help for further options available')
 
     arguments.args_databases(parser,
-                             genome=True) # Add option to change genome name
+                             genome=True,
+                             location=True) # Add option to change genome name
     arguments.args_aligner_inputs(parser,
                                   keep=True) # Add option to keep alignments
 

@@ -22,14 +22,14 @@
 # Set working directory and argument types using getopts
 HG_DIR=$(pwd)
 OPTIND=1
-GET_REF=YES
+GET_REF=NO
 OMMIT_BASH=NO
 while getopts "hrb:" opt; do
     case "$opt" in
         h) 
             echo "USAGE: setup.sh -hrb"
             echo " -h : Show this help screen"
-            echo " -r : Download the base references for HISAT-genotype (Default - True)"
+            echo " -r : Download the base references for HISAT-genotype (Default - False)"
             echo " -b : Ommit adding PATH to .bashrc or .bash_profile file (Defualt - False)"
             exit 0
             ;;
@@ -56,7 +56,7 @@ BUILT="hisat2-align"
 BASHRC=~/.bashrc
 BASH_PROFILE=~/.bash_profile
 
-### This section downloads and sets-up hisat2 submodule
+## This section downloads and sets-up hisat2 submodule
 echo "Setting up HISAT2"
 # Move to hisat2 submodule directory
 cd hisat2
@@ -69,18 +69,16 @@ if ! command -v hisat2 &> /dev/null; then
             git submodule init
             git submodule update
         fi
+        echo "> Initiating Build"
+        make
     fi
-    echo "> Initiating Build"
-    make
 fi
-
-# Return to hisatgenotype directory
 cd ../
 
 # Download all references for HISAT-genotype
 if [  "$GET_REF" == "YES" ]; then
-    mkdir references
-    cd references
+    mkdir indicies
+    cd indicies
 
     # genotype_genome
     wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat-genotype/data/genotype_genome_20180128.tar.gz

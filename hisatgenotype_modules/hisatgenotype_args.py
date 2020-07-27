@@ -53,13 +53,14 @@ def args_common(parser,
                                     "test_id)(e.g., test_id:10,basic)")
 
 def args_databases(parser, 
-                   genome = False):
+                   genome   = False,
+                   location = False):
     if genome:
         parser.add_argument("-x", "--ref-genome",
                             dest="genotype_genome",
                             type=str,
                             default="",
-                            help="Base name for genome index if not "\
+                            help="Base name for genome index if NOT "\
                                     "genotype_genome (default: empty)")
     parser.add_argument("--base", "--base-fname",
                         dest="base_fname",
@@ -73,6 +74,14 @@ def args_databases(parser,
                         default="",
                         help="A comma-separated list of gene names (default: "\
                                 "empty, all genes)")
+    if location:
+        default = '/'.join(os.path.realpath(__file__).split('/')[:-2])\
+                     + "/indicies"
+        parser.add_argument("-z", "--index_dir",
+                            dest="ix_dir",
+                            type=str,
+                            default=default,
+                            help="Set location to use for indicies. (default: %s)" % default)
 
 def args_set_aligner(parser, 
                      missmatch = True):

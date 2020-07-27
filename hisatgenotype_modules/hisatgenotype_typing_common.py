@@ -77,24 +77,25 @@ def check_files(fnames):
     return True
 
 """ Make sure the base files are present """
-def check_base(base_fname, aligner):
-    genotype_fnames = ["%s.fa" % base_fname,
-                       "%s.locus" % base_fname,
-                       "%s.snp" % base_fname,
-                       "%s.haplotype" % base_fname,
-                       "%s.link" % base_fname,
-                       "%s.coord" % base_fname,
-                       "%s.clnsig" % base_fname]
+def check_base(base_fname, aligner, ix_dir = "."):
+    full_path = ix_dir + "/" + base_fname
+    genotype_fnames = ["%s.fa" % full_path,
+                       "%s.locus" % full_path,
+                       "%s.snp" % full_path,
+                       "%s.haplotype" % full_path,
+                       "%s.link" % full_path,
+                       "%s.coord" % full_path,
+                       "%s.clnsig" % full_path]
     # graph index files
     if aligner == "hisat2":
-        genotype_fnames += ["%s.%d.ht2" % (base_fname, i+1) for i in range(8)]
+        genotype_fnames += ["%s.%d.ht2" % (full_path, i+1) for i in range(8)]
     else:
         assert aligner == "bowtie2"
-        genotype_fnames = ["%s.%d.bt2" % (base_fname, i+1) for i in range(4)]
-        genotype_fnames += ["%s.rev.%d.bt2" % (base_fname, i+1) for i in range(2)]
+        genotype_fnames = ["%s.%d.bt2" % (full_path, i+1) for i in range(4)]
+        genotype_fnames += ["%s.rev.%d.bt2" % (full_path, i+1) for i in range(2)]
         
     if not check_files(genotype_fnames):
-        print("Error: %s related files are missing!" % base_fname, 
+        print("Error: %s related files are missing in %s!" % (base_fname, ix_dir), 
               file=sys.stderr)
         return False
     
@@ -462,7 +463,8 @@ def read_MSF_file(fname,
 # --------------------------------------------------------------------------- #
 """ Download GRCh38 human reference and HISAT2 indexes """
 @locking
-def download_genome_and_index():
+def download_genome_and_index(destination):
+    assert os.path.exists(destination)
     HISAT2_fnames = ["grch38",
                      "genome.fa",
                      "genome.fa.fai"]
@@ -471,43 +473,56 @@ def download_genome_and_index():
               "tar xvzf grch38.tar.gz",
               "rm grch38.tar.gz",
               "hisat2-inspect grch38/genome > genome.fa",
-              "samtools faidx genome.fa"]
+              "samtools faidx genome.fa",
+              "mv -r grch38/ %s" % destination,
+              "mv genome.fa genome.fa.fai %s" % destination]
 
     if not check_files(HISAT2_fnames):
         for cmd in script:
             os.system(cmd)
 
+@locking
+def download_genotype_genome(destination):
+    assert os.path.exists(destination)
+    script = ["wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat-genotype/data/genotype_genome_20180128.tar.gz",
+              "tar xvzf genotype_genome_20180128.tar.gz",
+              "rm genotype_genome_20180128.tar.gz",
+              "mv genotype_genome* %s" % destination]
+
 """ This will clone the HISATgenotype database """
 @locking
-def clone_hisatgenotype_database():
-    if not os.path.exists("hisatgenotype_db"):
+def clone_hisatgenotype_database(destination):
+    if not os.path.exists("%s/hisatgenotype_db" % destination):
         os.system("git clone https://github.com/DaehwanKimLab/hisatgenotype_db.git")
+        os.system("mv hisatgenotype_db %s" % destination)
 
 """ Extracts a database if it doesn't exsist """
 """ Will set minimum variant frequency to 0.1 for HLA and leftshift to codis """
 @locking
 def extract_database_if_not_exists(base,
                                    locus_list,
+                                   ix_dir,
                                    inter_gap = 30,
                                    intra_gap = 50,
                                    partial = True,
                                    verbose = False):
-    fnames = [base + "_backbone.fa",
-              base + "_sequences.fa",
-              base + ".locus",
-              base + ".snp",
-              base + ".index.snp",
-              base + ".haplotype",
-              base + ".link",
-              base + ".allele",
-              base + ".partial"]
+    full_base = ix_dir + base
+    fnames = [full_base + "_backbone.fa",
+              full_base + "_sequences.fa",
+              full_base + ".locus",
+              full_base + ".snp",
+              full_base + ".index.snp",
+              full_base + ".haplotype",
+              full_base + ".link",
+              full_base + ".allele",
+              full_base + ".partial"]
     if check_files(fnames):
         return
 
     print("Building %s Database" % base,
          file=sys.stderr)
     typing_process.extract_vars(base,
-                                '',
+                                ix_dir,
                                 locus_list,
                                 inter_gap,
                                 intra_gap,
@@ -530,10 +545,12 @@ def extract_database_if_not_exists(base,
 """ Builds HISAT2 or Bowtie2 index using native scripts """
 @locking
 def build_index_if_not_exists(base,
+                              ix_dir,
                               aligner,
                               index_type,
                               threads = 1,
                               verbose = False):
+    full_base = ix_dir + base
     if aligner == "hisat2":
         # Build HISAT2 graph indexes based on the above information
         if index_type == "graph":
@@ -544,8 +561,8 @@ def build_index_if_not_exists(base,
                              "-p", str(threads),
                              "--snp", "%s.index.snp" % base,
                              "--haplotype", "%s.haplotype" % base,
-                             "%s_backbone.fa" % base,
-                             "%s.graph" % base]
+                             "%s/%s_backbone.fa" % (ix_dir, base),
+                             "%s/%s.graph" % (ix_dir, base)]
                 if verbose:
                     print("\tRunning:", ' '.join(build_cmd), 
                           file=sys.stderr)
