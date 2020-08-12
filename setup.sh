@@ -24,18 +24,24 @@ HG_DIR=$(pwd)
 OPTIND=1
 GET_REF=NO
 OMMIT_BASH=NO
-while getopts "hrb" opt; do
+OUTFILE=""
+while getopts "hbrx:" opt; do
     case "$opt" in
         h) 
             echo "USAGE: setup.sh -hrb"
             echo " -h : Show this help screen"
-            echo " -r : Download the base references for HISAT-genotype (Default - False)"
             echo " -b : Ommit adding PATH to .bashrc or .bash_profile file (Defualt - False)"
+            echo " -r : Download the base references for HISAT-genotype to default folder (Default - False)"
+            echo " -x : Download base references for HISAT-genotype to folder of choice"
             exit 0
             ;;
-        r) GET_REF=YES
+        b)  OMMIT_BASH=YES
             ;;
-        b) OMMIT_BASH=YES
+        r)  GET_REF=YES
+            OUTFILE=indicies
+            ;;           
+        x)  GET_REF=YES
+            OUTFILE=$OPTARG
             ;;
     esac
 done
@@ -52,7 +58,7 @@ add_to_bash(){
 
 # Files to check for
 DOWNLOADED="hisat2.cpp"
-BUILT="hisat2-align"
+BUILT="hisat2-align-l"
 BASHRC=~/.bashrc
 BASH_PROFILE=~/.bash_profile
 
@@ -62,8 +68,8 @@ echo "Setting up HISAT2"
 cd hisat2
 
 if ! command -v hisat2 &> /dev/null; then
-    echo "> No HISAT2 found on system"
     if test ! -f "$BUILT"; then
+        echo "> No HISAT2 found on system"
         if test ! -f "$DOWNLOADED"; then
             echo "> Gathering Module"
             git submodule init
@@ -75,10 +81,30 @@ if ! command -v hisat2 &> /dev/null; then
 fi
 cd ../
 
+# Add PATH lines to BASH
+if [ "$OMMIT_BASH" == "NO" ]; then
+    if test -f "$BASHRC"; then
+        add_to_bash "$BASHRC"
+    elif test -f "$BASH_PROFILE"; then
+        add_to_bash "$BASH_PROFILE"
+    else
+        add_to_bash "$BASHRC"
+    fi
+fi
+
 # Download all references for HISAT-genotype
 if [  "$GET_REF" == "YES" ]; then
-    mkdir indicies
-    cd indicies
+    if ! command -v hisat2 &> /dev/null; then
+        echo "Cannot Build Indicies without HISAT2"
+        exit 1
+    fi
+
+    if (( $OUTFILE != indicies )); then
+        echo $OUTFILE > hg_ix.links
+    fi
+
+    mkdir $OUTFILE
+    cd $OUTFILE
 
     # genotype_genome
     wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat-genotype/data/genotype_genome_20180128.tar.gz
@@ -94,16 +120,6 @@ if [  "$GET_REF" == "YES" ]; then
 
     #HISATgenotpye Database
     git clone https://github.com/DaehwanKimLab/hisatgenotype_db.git
-    cd ../
+    cd -
 fi
 
-# Add PATH lines to BASH
-if [ "$OMMIT_BASH" == "NO" ]; then
-    if test -f "$BASHRC"; then
-        add_to_bash "$BASHRC"
-    elif test -f "$BASH_PROFILE"; then
-        add_to_bash "$BASH_PROFILE"
-    else
-        add_to_bash "$BASHRC"
-    fi
-fi

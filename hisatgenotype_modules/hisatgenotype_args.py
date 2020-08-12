@@ -75,8 +75,11 @@ def args_databases(parser,
                         help="A comma-separated list of gene names (default: "\
                                 "empty, all genes)")
     if location:
-        default = '/'.join(os.path.realpath(__file__).split('/')[:-2])\
-                     + "/indicies"
+        default = '/'.join(os.path.realpath(__file__).split('/')[:-2])
+        if os.path.exists(default + "/hg_ix.link"):
+            default = open(default + "/hg_ix.link").read().strip("\n")
+        else:
+            default += "/indicies"
         parser.add_argument("-z", "--index_dir",
                             dest="ix_dir",
                             type=str,
