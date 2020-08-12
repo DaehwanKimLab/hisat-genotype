@@ -339,7 +339,7 @@ def typing(simulation,
             if genotype_genome != "":
                 gegenome = genotype_genome
             else:
-                gegenome = (base_fname + "." + index_type)
+                gegenome = (full_gg_path + "." + index_type)
             typing_common.align_reads(aligner,
                                       simulation,
                                       gegenome,
@@ -617,7 +617,8 @@ def typing(simulation,
                     ht = ht.split('-')
 
                     assert len(ht) >= 2
-                    left, right = int(ht[0]), int(ht[-1])
+                    left  = int(ht[0])
+                    right = int(ht[-1])
                     assert left <= right
 
                     ht = ht[1:-1]
@@ -2252,11 +2253,11 @@ def genotyping_locus(base_fname,
     if genotype_genome:
         # Check if the pre-existing files (hla*) are compatible with the current
         # parameter setting
-        if os.path.exists("%s.locus" % base_fname):
+        if os.path.exists("%s/%s.locus" % (ix_dir, base_fname)):
             left       = 0
             Gene_genes = []
             BACKBONE   = False
-            for line in open("%s.locus" % base_fname):
+            for line in open("%s/%s.locus" % (ix_dir, base_fname)):
                 Gene_name = line.strip().split()[0]
                 if Gene_name.find("BACKBONE") != -1:
                     BACKBONE = True
@@ -2270,9 +2271,12 @@ def genotyping_locus(base_fname,
             if not set(locus_list).issubset(set(Gene_genes)):
                 delete_hla_files = True
             if delete_hla_files:
-                os.system("rm %s*" % base_fname)
+                print("Error: Current %s build does not contain the --locus-list loci"\
+                        "Please rebuild the database.",
+                      file=sys.stderr)
+                exit(1)
 
-        full_gg_path = ix_dir + genotype_genome
+        full_gg_path = ix_dir + "/" + genotype_genome
         # Extract variants, backbone sequence, and other sequeces  
         genome_fnames = [full_gg_path + ".fa",
                          full_gg_path + ".fa.fai",
@@ -2339,11 +2343,11 @@ def genotyping_locus(base_fname,
                                                     threads,
                                                     verbose >= 1)
         # Read alleles
-        for line in open("%s.allele" % base_fname):
+        for line in open("%s.allele" % full_gg_path):
             alleles.add(line.strip())
         
         # Read partial alleles
-        for line in open("%s.partial" % base_fname):
+        for line in open("%s.partial" % full_gg_path):
             partial_alleles.add(line.strip())
 
         # Read alleles (names and sequences)
@@ -2353,23 +2357,23 @@ def genotyping_locus(base_fname,
                 refGenes[region_name] = region_name
                 refGene_loci[region_name] = [region_name, chr, left, right, []]
         else:
-            typing_common.read_locus("%s.locus" % base_fname,
+            typing_common.read_locus("%s.locus" % full_gg_path,
                                      False, # this is not the genotype genome
                                      base_fname,
                                      refGenes,
                                      refGene_loci)
 
         # Read variants, and link information
-        Vars, Var_list = typing_common.read_variants("%s.snp" % base_fname, True)
-        Links = typing_common.read_links("%s.link" % base_fname)
+        Vars, Var_list = typing_common.read_variants("%s.snp" % full_gg_path, True)
+        Links = typing_common.read_links("%s.link" % full_gg_path)
 
         # Read allele sequences
-        typing_common.read_allele_seq(base_fname + "_backbone.fa", Genes, True)
+        typing_common.read_allele_seq(full_gg_path + "_backbone.fa", Genes, True)
         read_Gene_alleles_from_vars(Vars, Var_list, Links, Genes)
 
     # Get database version if exsists
-    if os.path.exists(base_fname + ".version"):
-        dbversion = open(base_fname + ".version", 'r').read()
+    if os.path.exists(full_gg_path + ".version"):
+        dbversion = open(full_gg_path + ".version", 'r').read()
     else:
         dbversion = "NONE"
     
@@ -2393,9 +2397,9 @@ def genotyping_locus(base_fname,
 
     # Sanity Check
     if SANITY_CHECK \
-            and os.path.exists(base_fname + "_backbone.fa") \
-            and os.path.exists(base_fname + "_sequences.fa"):
-        validation_check.check_allele_validity(base_fname, Genes)
+            and os.path.exists(full_gg_path + "_backbone.fa") \
+            and os.path.exists(full_gg_path + "_sequences.fa"):
+        validation_check.check_allele_validity(full_gg_path, Genes)
 
     # alleles names
     Gene_names = {}

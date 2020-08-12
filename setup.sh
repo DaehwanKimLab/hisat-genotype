@@ -24,7 +24,7 @@ HG_DIR=$(pwd)
 OPTIND=1
 GET_REF=NO
 OMMIT_BASH=NO
-while getopts "hrb:" opt; do
+while getopts "hrb" opt; do
     case "$opt" in
         h) 
             echo "USAGE: setup.sh -hrb"

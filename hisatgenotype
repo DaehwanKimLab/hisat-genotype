@@ -76,12 +76,14 @@ def run_vars(base_fname,
             leftshift,
             partial,
             verbose):
+
     # Clone hisatgenotype database from git
     typing_common.clone_hisatgenotype_database(ix_dir)
     
     if not base_fname:
         base_fname = []
-        for database in os.listdir("hisatgenotype_db"):
+        for database in os.listdir("%s/hisatgenotype_db" % ix_dir):
+            database = database.split("/")[-1]
             if database in ['.git', 'README.md']:
                 continue
             base_fname.append(database.lower())
@@ -247,13 +249,16 @@ def extract_bam(file_lists,
                 alignment_fname,
                 aligner,
                 verbose):
+
+    full_base = ix_dir + "/" + base
     # variants, backbone sequence, and other sequeces
     if not typing_common.check_base(base, aligner, ix_dir):
         sys.exit(1)
 
     # Read locus alleles (names and sequences)
-    regions, region_loci = {}, {}
-    for line in open("%s.locus" % base):
+    regions     = {} 
+    region_loci = {}
+    for line in open("%s.locus" % full_base):
         family, allele_name, chr, left, right = line.strip().split()[:5]
         family = family.lower()
         if len(target_locus_list) > 0 \
@@ -266,7 +271,8 @@ def extract_bam(file_lists,
                 and locus_name not in target_locus_list[family]:
             continue
         
-        left, right = int(left), int(right)
+        left  = int(left)
+        right = int(right)
         if family not in region_loci:
             region_loci[family] = []
         region_loci[family].append([locus_name, allele_name, chr, left, right])
@@ -421,16 +427,19 @@ def typing_process(args):
     # Set default output and make final changes before beginning
     if args.out_dir == ".":
         args.out_dir += "/hisatgenotype_out"
+    
+    if not args.ix_dir:
+        args.ix_dir = "."
 
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)
     
     if not os.path.exists(args.ix_dir):
-        print("Error: directory %s not found")
+        print("Error: Index directory %s not found") % args.ix_dir
         exit(1)
 
-    if args.ix_dir[-1] != "/":
-        args.ix_dir += "/"
+    if args.ix_dir[-1] == "/":
+        args.ix_dir = args.ix_dir[:-1]
 
     if args.read_dir:
         if '/' != args.read_dir[-1]:
@@ -690,8 +699,8 @@ if __name__ == '__main__':
         epilog='See --advanced-help for further options available')
 
     arguments.args_databases(parser,
-                             genome=True,
-                             location=True) # Add option to change genome name
+                             genome=True,    # Add option to change genome name
+                             location=True)  # Add option to set location
     arguments.args_aligner_inputs(parser,
                                   keep=True) # Add option to keep alignments
 

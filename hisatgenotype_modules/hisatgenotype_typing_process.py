@@ -315,7 +315,7 @@ def extract_vars(base_fname,
                  partial,
                  verbose):
 
-    base_fullpath_name = ix_dir + base_fname
+    base_fullpath_name = ix_dir + "/" + base_fname
 
     # Download human genome and HISAT2 index
     typing_common.download_genome_and_index(ix_dir)
@@ -332,7 +332,8 @@ def extract_vars(base_fname,
     right_ext_seq_dic = {}
     genes             = {}
     gene_strand       = {}
-    fasta_dname = "hisatgenotype_db/%s/fasta" % base_fname.upper()
+    hisatgenotype_db  = "%s/hisatgenotype_db" % ix_dir
+    fasta_dname = "%s/%s/fasta" % (hisatgenotype_db, base_fname.upper())
 
     # Check HLA genes
     gene_names = []
@@ -359,7 +360,7 @@ def extract_vars(base_fname,
         if base_fname not in ["cyp", "rbg"]: 
             aligner_cmd += ["--score-min", "C,-12"]
         aligner_cmd += ["--no-unal",
-                        "-x", "grch38/genome",
+                        "-x", "%s/grch38/genome" % ix_dir,
                         "-f", "%s/%s_gen.fasta" % (fasta_dname, gene)]
         align_proc = subprocess.Popen(aligner_cmd,
                                       universal_newlines = True,
@@ -446,7 +447,7 @@ def extract_vars(base_fname,
             if left2 > 0:
                 extract_seq_cmd = ["samtools", 
                                    "faidx", 
-                                   "genome.fa", 
+                                   "%s/genome.fa" % ix_dir, 
                                    "%s:%d-%d" % (chr, left1, left2)]
                 extract_seq_proc = subprocess.Popen(extract_seq_cmd,
                                                     universal_newlines = True,
@@ -459,7 +460,7 @@ def extract_vars(base_fname,
                     left_ext_seq += line
             extract_seq_cmd = ["samtools", 
                                "faidx", 
-                               "genome.fa", 
+                               "%s/genome.fa" % ix_dir, 
                                "%s:%d-%d" % (chr, right, right + ext_seq_len - 1)]
             extract_seq_proc = subprocess.Popen(extract_seq_cmd,
                                                 universal_newlines = True,
@@ -481,16 +482,17 @@ def extract_vars(base_fname,
     gene_exons       = {}
     gene_exon_counts = {}
     
-    if os.path.exists("hisatgenotype_db/VERSION"):
-        dbversion = open("hisatgenotype_db/VERSION", 'r').read()
+    if os.path.exists("%s/VERSION" % hisatgenotype_db):
+        dbversion = open("%s/VERSION" % hisatgenotype_db, 'r').read()
     else:
         dbversion = "NONE"
 
     if base_fname in spliced_gene:        
         skip = False
         look_exon_num = False
-        for line in open("hisatgenotype_db/%s/%s.dat" % (base_fname.upper(), 
-                                                         base_fname)):
+        for line in open("%s/%s/%s.dat" % (hisatgenotype_db,
+                                           base_fname.upper(), 
+                                           base_fname)):
             if line.startswith("DE"):
                 if not line.split()[1][-1].isdigit():
                     allele_name = line.split()[1][:-1]
@@ -601,11 +603,13 @@ def extract_vars(base_fname,
             right_ext_seq = right_ext_seq_dic[gene]
 
         if base_fname in spliced_gene:
-            MSA_fname = "hisatgenotype_db/%s/msf/%s_gen.msf" \
-                            % (base_fname.upper(), gene)
+            MSA_fname = "%s/%s/msf/%s_gen.msf" % (hisatgenotype_db, 
+                                                  base_fname.upper(), 
+                                                  gene)
         else:
-            MSA_fname = "hisatgenotype_db/%s/msf/%s_gen.msf" \
-                            % (base_fname.upper(), gene)
+            MSA_fname = "%s/%s/msf/%s_gen.msf" % (hisatgenotype_db, 
+                                                  base_fname.upper(), 
+                                                  gene)
             
         if not os.path.exists(MSA_fname):
             print("Warning: %s does not exist" % MSA_fname, 
@@ -616,7 +620,7 @@ def extract_vars(base_fname,
                                                   full_alleles, 
                                                   left_ext_seq, 
                                                   right_ext_seq)
-        full_allele_names   = set(names.keys())
+        full_allele_names = set(names.keys())
 
         # Identify a consensus sequence
         assert len(seqs) > 0
@@ -633,8 +637,9 @@ def extract_vars(base_fname,
             seq_len = find_seq_len(seqs)
 
         if partial and base_fname in spliced_gene:
-            partial_MSA_fname = "hisatgenotype_db/%s/msf/%s_nuc.msf" \
-                                    % (base_fname.upper(), gene)
+            partial_MSA_fname = "%s/%s/msf/%s_nuc.msf" % (hisatgenotype_db, 
+                                                          base_fname.upper(), 
+                                                          gene)
             if not os.path.exists(partial_MSA_fname):
                 print("Warning: %s does not exist" % partial_MSA_fname, 
                       file=sys.stderr)
@@ -936,7 +941,7 @@ def extract_vars(base_fname,
             # Guarantee two missmatchs then one per 5000bp
             aligner_cmd += ["--score-min", "L,-12,-0.0012"] 
         aligner_cmd += ["--no-unal",
-                        "-x", "grch38/genome",
+                        "-x", "%s/grch38/genome" % ix_dir,
                         "-f", 
                         "-c", "%s" % ref_backbone_seq.replace('.', '')]
         align_proc = subprocess.Popen(aligner_cmd,
@@ -1024,8 +1029,10 @@ def extract_vars(base_fname,
 
             # Sanity check for exonic sequence
             if SANITY_CHECK \
-                    and os.path.exists("hisatgenotype_db/%s/fasta/%s_nuc.fasta" \
-                                            % (base_fname.upper(), gene)):
+                    and os.path.exists("%s/%s/fasta/%s_nuc.fasta" \
+                                            % (hisatgenotype_db, 
+                                               base_fname.upper(), 
+                                               gene)):
                 validation_check.validate_exons(exon_str,
                                                 backbone_seq,
                                                 Vars_,

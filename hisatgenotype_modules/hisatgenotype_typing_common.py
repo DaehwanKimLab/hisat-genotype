@@ -469,15 +469,15 @@ def download_genome_and_index(destination):
                      "genome.fa",
                      "genome.fa.fai"]
 
-    script = ["wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat2/data/grch38.tar.gz",
-              "tar xvzf grch38.tar.gz",
-              "rm grch38.tar.gz",
-              "hisat2-inspect grch38/genome > genome.fa",
-              "samtools faidx genome.fa",
-              "mv -r grch38/ %s" % destination,
-              "mv genome.fa genome.fa.fai %s" % destination]
-
     if not check_files(HISAT2_fnames):
+        script = ["wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat2/data/grch38.tar.gz",
+                "tar xvzf grch38.tar.gz",
+                "rm grch38.tar.gz",
+                "hisat2-inspect grch38/genome > genome.fa",
+                "samtools faidx genome.fa",
+                "mv grch38 %s" % destination,
+                "mv genome.fa genome.fa.fai %s" % destination]
+
         for cmd in script:
             os.system(cmd)
 
@@ -488,6 +488,9 @@ def download_genotype_genome(destination):
               "tar xvzf genotype_genome_20180128.tar.gz",
               "rm genotype_genome_20180128.tar.gz",
               "mv genotype_genome* %s" % destination]
+    
+    for cmd in script:
+        os.system(cmd)
 
 """ This will clone the HISATgenotype database """
 @locking
@@ -501,12 +504,12 @@ def clone_hisatgenotype_database(destination):
 @locking
 def extract_database_if_not_exists(base,
                                    locus_list,
-                                   ix_dir,
+                                   ix_dir = ".",
                                    inter_gap = 30,
                                    intra_gap = 50,
                                    partial = True,
                                    verbose = False):
-    full_base = ix_dir + base
+    full_base = ix_dir + "/" + base
     fnames = [full_base + "_backbone.fa",
               full_base + "_sequences.fa",
               full_base + ".locus",
@@ -550,19 +553,19 @@ def build_index_if_not_exists(base,
                               index_type,
                               threads = 1,
                               verbose = False):
-    full_base = ix_dir + base
+    full_base = ix_dir + "/" + base
     if aligner == "hisat2":
         # Build HISAT2 graph indexes based on the above information
         if index_type == "graph":
             hisat2_graph_index_fnames = ["%s.graph.%d.ht2" \
-                                         % (base, i+1) for i in range(8)]
+                                         % (full_base, i+1) for i in range(8)]
             if not check_files(hisat2_graph_index_fnames):
                 build_cmd = ["hisat2-build",
                              "-p", str(threads),
-                             "--snp", "%s.index.snp" % base,
-                             "--haplotype", "%s.haplotype" % base,
-                             "%s/%s_backbone.fa" % (ix_dir, base),
-                             "%s/%s.graph" % (ix_dir, base)]
+                             "--snp", "%s.index.snp" % full_base,
+                             "--haplotype", "%s.haplotype" % full_base,
+                             "%s_backbone.fa" % full_base,
+                             "%s.graph" % full_base]
                 if verbose:
                     print("\tRunning:", ' '.join(build_cmd), 
                           file=sys.stderr)
@@ -579,11 +582,11 @@ def build_index_if_not_exists(base,
         else:
             assert index_type == "linear"
             hisat2_linear_index_fnames = ["%s.linear.%d.ht2" \
-                                          % (base, i+1) for i in range(8)]
+                                          % (full_base, i+1) for i in range(8)]
             if not check_files(hisat2_linear_index_fnames):
                 build_cmd = ["hisat2-build",
-                             "%s_backbone.fa,%s_sequences.fa" % (base, base),
-                             "%s.linear" % base]
+                             "%s_backbone.fa,%s_sequences.fa" % (full_base, full_base),
+                             "%s.linear" % fill_base]
                 proc = subprocess.Popen(build_cmd, 
                                         stdout = open("/dev/null", 'w'), 
                                         stderr = open("/dev/null", 'w'))
@@ -595,11 +598,11 @@ def build_index_if_not_exists(base,
     else:
         # Build Bowtie2 indexes based on the above information
         assert aligner == "bowtie2" and index_type == "linear"        
-        bowtie2_index_fnames = ["%s.%d.bt2" % (base, i+1) for i in range(4)]
-        bowtie2_index_fnames += ["%s.rev.%d.bt2" % (base, i+1) for i in range(2)]
+        bowtie2_index_fnames = ["%s.%d.bt2" % (full_base, i+1) for i in range(4)]
+        bowtie2_index_fnames += ["%s.rev.%d.bt2" % (full_base, i+1) for i in range(2)]
         if not check_files(bowtie2_index_fnames):
             build_cmd = ["bowtie2-build",
-                         "%s_backbone.fa,%s_sequences.fa" % (base, base),
+                         "%s_backbone.fa,%s_sequences.fa" % (full_base, full_base),
                          base]
             proc = subprocess.Popen(build_cmd, stdout = open("/dev/null", 'w'))
             proc.communicate()        
@@ -610,7 +613,9 @@ def build_index_if_not_exists(base,
 
 """ Function to match file names in directory if paired and using directory """
 def get_filename_match(fns): 
-    fnames, fnames2, fnbase = [], [], []
+    fnames  = []
+    fnames2 = []
+    fnbase  = []
     for i in range(0, len(fns), 2):
         sets = fns[i:i+2]
         fileL, fileR = sets
@@ -672,7 +677,8 @@ def simulate_reads(seq_dic,         # seq_dic["A"]["A*24:36N"] = "ACGTCCG ..."
                    skip_fragment_regions = [],
                    out_dir = ".",
                    test_i = 0):
-    reads_1, reads_2 = [], []
+    reads_1   = []
+    reads_2   = []
     num_pairs = []
 
     def mkdir_p(path):
