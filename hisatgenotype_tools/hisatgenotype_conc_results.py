@@ -59,6 +59,10 @@ if __name__ == '__main__':
                         dest="csv",
                         action = "store_true",
                         help='Save Results as CSV dataframe')
+    parser.add_argument("--output-file",
+                        dest="ofile",
+                        default="HG_report_results.csv",
+                        help='Path to the output CSV file')
 
     args = parser.parse_args()
 
@@ -129,7 +133,7 @@ if __name__ == '__main__':
 
     if args.csv:
         scores.insert(0, genecol)
-        with open("HG_report_results.csv", "w") as ofo:
+        with open(args.ofile, "w") as ofo:
             for line in scores:
                 line = "\t".join(line)
                 ofo.write(line + "\n")
