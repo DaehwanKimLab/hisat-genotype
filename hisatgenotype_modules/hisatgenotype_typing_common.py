@@ -469,9 +469,9 @@ def read_MSF_file(fname,
 @locking
 def download_genome_and_index(destination):
     assert os.path.exists(destination)
-    HISAT2_fnames = ["grch38",
-                     "genome.fa",
-                     "genome.fa.fai"]
+    HISAT2_fnames = ["%s/grch38" % destination,
+                     "%s/genome.fa" % destination,
+                     "%s/genome.fa.fai" % destination]
 
     if not check_files(HISAT2_fnames):
         script = ["wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat2/data/grch38.tar.gz",
@@ -1004,6 +1004,7 @@ def align_reads(aligner,
     #print aligner_cmd
     if verbose >= 1:
         print(' '.join(aligner_cmd), file=sys.stderr)
+
     align_proc = subprocess.Popen(aligner_cmd,
                                   universal_newlines = True,
                                   stdout = subprocess.PIPE,

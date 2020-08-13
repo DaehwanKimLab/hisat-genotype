@@ -213,7 +213,8 @@ def validate_exons(exon_str,
                    ref_seq,
                    gene_strand,
                    gene,
-                   base_fname):
+                   base_fname,
+                   hisatgenotype_db):
     exons_ = []
     for exon in exon_str.split(','):
         if exon.endswith('p'):
@@ -254,8 +255,9 @@ def validate_exons(exon_str,
 
     cmp_exon_seq_ = ""
     allele_name_  = ""
-    for line in open("hisatgenotype_db/%s/fasta/%s_nuc.fasta" 
-                        % (base_fname.upper(), gene)):
+    for line in open("%s/%s/fasta/%s_nuc.fasta" % (hisatgenotype_db,
+                                                   base_fname.upper(), 
+                                                   gene)):
         if line.startswith(">"):
             if allele_name_ == ref_gene:
                 break

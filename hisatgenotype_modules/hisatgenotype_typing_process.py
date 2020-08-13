@@ -1040,7 +1040,8 @@ def extract_vars(base_fname,
                                                 ref_seq,
                                                 gene_strand,
                                                 gene,
-                                                base_fname)
+                                                base_fname,
+                                                hisatgenotype_db)
         else:
             exon_str = "%d-%d" % (left - left + 1, right - left + 1)
 

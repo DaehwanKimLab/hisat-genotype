@@ -241,7 +241,7 @@ def error_correct(ref_seq,
 # --------------------------------------------------------------------------- #
 """ This script has many argument. Consider making a class or namespace """
 def typing(simulation,
-           base_fname,
+           full_path_base_fname,
            locus_list,
            genotype_genome,
            partial,
@@ -278,7 +278,8 @@ def typing(simulation,
            dbversion,
            test_i = 0):
 
-    core_fid = "" # May add to bottom of options
+    base_fname = full_path_base_fname.split("/")[-1]
+    core_fid   = "" # May add to bottom of options
     if simulation:
         test_passed = {}
         report_file = open('%s/%s-%s_test-%s.report' 
@@ -310,12 +311,13 @@ def typing(simulation,
               file=f_)
         print("# COMMAND:\n%s" % cmd_call, 
               file=f_)
-        if base_fname == "genome":
-            print("\t" + locus_list, 
-                  file=f_)
-        else:
-            print("\t" + ' '.join(locus_list), 
-                  file=f_)
+        # if base_fname == "genome":
+        #     print("\t" + locus_list, 
+        #           file=f_)
+        # else:
+        #     print(locus_list)
+        #     print("\t" + ' '.join(locus_list), 
+        #           file=f_)
 
     # Begin Alignment for typing
     for aligner, index_type in aligners:
@@ -339,7 +341,7 @@ def typing(simulation,
             if genotype_genome != "":
                 gegenome = genotype_genome
             else:
-                gegenome = (full_gg_path + "." + index_type)
+                gegenome = (full_path_base_fname + "." + index_type)
             typing_common.align_reads(aligner,
                                       simulation,
                                       gegenome,
@@ -350,7 +352,7 @@ def typing(simulation,
                                       threads,
                                       alignment_fname,
                                       verbose)
-        
+
         viterbi_calls = {}
         for test_Gene_names in locus_list:
             if base_fname == "genome":
@@ -2075,12 +2077,25 @@ def typing(simulation,
                     break
             print("\n", file=sys.stderr)
 
-            if simulation and not False in success:
-                aligner_type = "%s %s" % (aligner, index_type)
-                if not aligner_type in test_passed:
-                    test_passed[aligner_type] = 1
-                else:
-                    test_passed[aligner_type] += 1
+            # TODO - CB I can switch between full and partial success counting
+            # I need to decide how to handle this block of code
+            # if simulation and not False in success:
+            #     aligner_type = "%s %s" % (aligner, index_type)
+            #     if not aligner_type in test_passed:
+            #         test_passed[aligner_type] = 1
+            #     else:
+            #         test_passed[aligner_type] += 1
+
+            if simulation:
+                for iscorrect in success:
+                    if not iscorrect:
+                        continue
+
+                    aligner_type = "%s %s" % (aligner, index_type)
+                    if not aligner_type in test_passed:
+                        test_passed[aligner_type] = 1
+                    else:
+                        test_passed[aligner_type] += 1
 
         if not keep_alignment and remove_alignment_file:
             os.system("rm %s*" % (alignment_fname))
@@ -2251,6 +2266,8 @@ def genotyping_locus(base_fname,
     partial_alleles = set()
     simulation      = (read_fname == [] and alignment_fname == "") 
     if genotype_genome:
+        full_gg_path = ix_dir + "/" + genotype_genome
+
         # Check if the pre-existing files (hla*) are compatible with the current
         # parameter setting
         if os.path.exists("%s/%s.locus" % (ix_dir, base_fname)):
@@ -2276,7 +2293,6 @@ def genotyping_locus(base_fname,
                       file=sys.stderr)
                 exit(1)
 
-        full_gg_path = ix_dir + "/" + genotype_genome
         # Extract variants, backbone sequence, and other sequeces  
         genome_fnames = [full_gg_path + ".fa",
                          full_gg_path + ".fa.fai",
@@ -2324,6 +2340,8 @@ def genotyping_locus(base_fname,
         read_Gene_alleles_from_vars(Vars, Var_list, Links, Genes)
 
     else:
+        full_gg_path = ix_dir + "/" + base_fname
+
         # Download human genome and HISAT2 index
         typing_common.clone_hisatgenotype_database(ix_dir)
         typing_common.download_genome_and_index(ix_dir)  
@@ -2509,7 +2527,7 @@ def genotyping_locus(base_fname,
 
             fastq = False
             tmp_test_passed = typing(simulation,
-                                     base_fname,
+                                     full_gg_path,
                                      test_locus_list,
                                      genotype_genome,
                                      partial,
@@ -2558,11 +2576,12 @@ def genotyping_locus(base_fname,
             if didpass:
                 print("\t\tPassed so far: %d/%d (%.2f%%)" 
                        % (test_passed[aligner_type], 
-                          test_i + 1, 
-                          (test_passed[aligner_type] * 100.0 / (test_i + 1))), 
+                          ((test_i + 1) * allele_count * len(genes)), 
+                          (test_passed[aligner_type] * 100.0 \
+                              / ((test_i + 1) * allele_count * len(genes)))), 
                        file=sys.stderr)
             else:
-                print("Test Failed!",
+                print("\t\tTest Failed!",
                       file=sys.stderr)
 
 
@@ -2580,7 +2599,7 @@ def genotyping_locus(base_fname,
         else:
             print(("\t", ' '.join(locus_list)), file=sys.stderr)
         typing(simulation,
-               base_fname,
+               full_gg_path,
                locus_list,
                genotype_genome,
                partial,

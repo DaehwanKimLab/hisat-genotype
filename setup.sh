@@ -99,8 +99,8 @@ if [  "$GET_REF" == "YES" ]; then
         exit 1
     fi
 
-    if (( $OUTFILE != indicies )); then
-        echo $OUTFILE > hg_ix.links
+    if [ "$OUTFILE" != "indicies" ]; then
+        echo $OUTFILE > hg_ix.link
     fi
 
     mkdir $OUTFILE
