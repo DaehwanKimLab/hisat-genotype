@@ -24,14 +24,14 @@ The tutorial requires a 64-bit computer running either Linux or Mac OS X and 8 G
 This tutorial is under active development and subject to change at any time.
 
 ## Initial Setup
-We use HISAT2 for graph representation and alignment, which is currently the most practical and quickest program available. We refer to hisat-genotype-top as our top directory where all of our programs are located. hisat-genotype-top is a place holder that you can change to whatever name you’d like to use.
+We use HISAT2 for graph representation and alignment, which is currently the most practical and quickest program available. We refer to hisatgenotype as our top directory where all of our programs are located. hisatgenotype is a place holder that you can change to whatever name you’d like to use.
 
 In order to install HISAT2, please run the following commands for automated installation (Mac/Linux using Bash). For manual installation please see the Manual.
 
 ```bash
 git clone https://github.com/DaehwanKimLab/hisat-genotype.git ~/hisatgenotype
 cd hisatgenotype
-bash setup.sh
+bash setup.sh -r
 ```
 
 Create a directory where we perform our analysis for HLA typing and assembly, which we will refer to as hla-analysis. hla-analysis is a place holder that you can change to whatever name you’d like to use.
@@ -55,12 +55,7 @@ SAMtools (version 1.3 or later)
 ## Downloading or Building a Graph Reference and Index
 The graph reference we are going to build incorporates variants of numerous HLA alleles into the linear reference using a graph. The graph reference also includes some known variants of other regions of the genome (e.g. common small variants).
 
-We provide a pre-built graph reference and index here, which you can download as follows.
-
-```bash
-wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat-genotype/data/genotype_genome_20180128.tar.gz
-tar xvzf genotype_genome_20180128.tar.gz
-```
+We provide a pre-built graph reference and index which was automatically downloaded in the last step.
 
 Or alternatively, if you want to build a graph reference, please refer to the Building a graph reference.
 
@@ -101,7 +96,7 @@ Number of reads aligned: 1507
  10 A*02:11:01 (count: 554)
 ```
 
-The above lines show the top ten alleles that the most number of reads are mapped to or compatible with. For example, the allele first ranked, A*02:01:01:02L, is compatible with 571 reads. This raw estimate based on the number of reads should not be used to determine the two true alleles because the alleles that resemble both but are not true alleles often tend to be compatible with more reads than either of the true alleles. Thus, we apply a statistical model to identify the two true alleles as described here.
+The above lines show the top ten alleles that the most number of reads are mapped to or compatible with. For example, the allele first ranked, A\*02:01:01:02L, is compatible with 571 reads. This raw estimate based on the number of reads should not be used to determine the two true alleles because the alleles that resemble both but are not true alleles often tend to be compatible with more reads than either of the true alleles. Thus, we apply a statistical model to identify the two true alleles as described here.
 
 ```bash
 Abundance of alleles
@@ -110,15 +105,17 @@ Abundance of alleles
   3 ranked A*24:33 (abundance: 0.48%)
 ```
 
-The above rankings show the top three alleles that are most abundant in the sample. Normally, the top two alleles in this estimate (e.g. A*02:01:01:01 and A*11:01:01:01) are considered as the two alleles that best match a given sequencing data.
+The above rankings show the top three alleles that are most abundant in the sample. Normally, the top two alleles in this estimate (e.g. A\*02:01:01:01 and A\*11:01:01:01) are considered as the two alleles that best match a given sequencing data.
+
+By running the following code the output can be reformated into a csv file for easier use:
+
+```bash
+hisatgenotype_toolkit parse-results --csv --in-dir hisatgenotype_out
+```
 
 ### Assembly Output
-These are screenshots of the assembly output as a result of the command line from Typing and Assembly. The actual output is available here in HTML format. Please note that currently only Google Chrome browser supports the HTML file.
+When using the *--assembly* option in HISATgenotype two additional files are produced. A png file with a graphical representation of the alleles typed and assembled, and a fasta file with the sequence of the contigs reported. The contigs will be annotated with the allele they derive from if the algorithm was able to match it to a seqence. 
 
-HLA Assembly NA12892 1.png
+If used with the example files, the first two bands in the png are two alleles predicted by HISAT-genotype, in this case A\*02:01:01:01 in green and A\*11:01:01:01 in yellow. Below are shorter bands indicating read alignments whose color is determined according to their compatibility with either allele. If reads are compatible with both alleles, they are shown in white.
 
-The first two bands are two alleles predicted by HISAT-genotype, in this case A*02:01:01:01 in green and A*11:01:01:01 in yellow. Below are shorter bands indicating read alignments whose color is determined according to their compatibility with either allele. If reads are compatible with both alleles, they are shown in white.
-
-HLA Assembly NA12892 2.png
-
-As above, the first two bands are two alleles predicted by HISAT-genotype, and the next two bands are two alleles assembled by HISAT-genotype. In most of the cases, the predicted alleles are the same as the assembled alleles.
+The middle two bands are two alleles predicted by HISAT-genotype, and the next two bands are two alleles assembled by HISAT-genotype. In most of the cases, the predicted alleles are the same as the assembled alleles.

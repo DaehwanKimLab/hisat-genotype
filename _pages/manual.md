@@ -59,21 +59,36 @@ builds since these are coming already prepared with most of the toolchains neede
 
 ## Automated Install - (Mac/Linux)
 This is a simple automated method for installing and getting HISAT-genotype setup on a Linux/Mac system using Bash.
-Replace the ~ which whichever directory you'd like to store HISAT-genotype in.
+Replace the ~ which whichever directory you'd like to store HISAT-genotype in. The -r option in the setup script will pre-download all of the basic requited indicies into the HISAT-genotype source directory. If you want to manually direct where these indicies are downloaded use the -x option followed by the absolute path to the desired location.
 
 ```bash
 git clone https://github.com/DaehwanKimLab/hisat-genotype.git ~/hisatgenotype
 cd hisatgenotype
-bash setup.sh
+bash setup.sh -r
 ```
 
-Setup was successful using the following commands:
+Check if setup was successful using the following commands:
 ```bash
 hisatgenotype --help
 hisat2 --help
 ```
 
 If there is an error then something did not set-up properly and you'll need to run a manual install
+
+### setup.sh options
+* **\-h** | *Default* : *none*
+> Show help screen
+
+* **\-b** | *Default* : False
+> Do not try to automatically add HISAT-genotype and HISAT2 to your Path environment
+
+* **\-r** | *Default* : False
+> Pre-download the base indicies for HISAT-genotype
+
+* **\-x** | *Default* : *[PATH_TO_HISATGENOTYPE]*/indicies
+> If -r option is set, set desired location for indicies if different than default
+
+***NOTE:*** If you want to predownload all indicies before running HISAT-genotype but after HISAT-genotype install and not automatically during HISAT-genotype run, you can use `bash setup.sh -brx PATH_TO_DIR` while in HISAT-genotype install directory.
 
 ## Manual Install - (Mac/Linux/Windows)
 ### Downloading HISAT-genotype and Building HISAT2 from source
@@ -84,7 +99,7 @@ Change the ~ to whichever directory you desire if this is not the behavior you w
 git clone --recurse-submodules https://github.com/DaehwanKimLab/hisat-genotype ~/hisatgenotype
 cd ~/hisatgenotype/hisat2
 
-$ make hisat2-align-s hisat2-build-s hisat2-inspect-s
+$ make
 ```
 
 ### Adding HISAT-genotype to PATH
@@ -110,7 +125,7 @@ The hisatgenotype.py python script will analyze a whole human genome using whole
 
 Usage:
 ```bash
-$ hisatgenotype -x [GENOME] [OPTIONS] -1 [FASTQ_PAIR1] -2 [FASTQ_PAIR2]
+$ hisatgenotype -x [GENOME] --base [GENE_GROUP] -z [INDEX_DIR] [OPTIONS] -1 [FASTQ_PAIR1] -2 [FASTQ_PAIR2]
 ```
 
 ### Standard Options
@@ -126,6 +141,10 @@ $ hisatgenotype -x [GENOME] [OPTIONS] -1 [FASTQ_PAIR1] -2 [FASTQ_PAIR2]
 * **\--locus-list** | *Default* : (empty) all genes 
 > A comma-separated list of gene names
 > Example: `--locus-list A,B,C,DRB1,DQA1,DQB1`
+
+* **\-z / \--index_dir** | *Default* : pre-downloaded directory or link file (hg_ix.link) location
+> Set location for the indecies HISATgenotype requires
+> Example: `-z ~/hisatgenotype/indicies`
 
 * **-f / \--fasta** | *Default* : `False`  
 > Bool to indicate if reads are provided in FASTA format  
@@ -344,7 +363,19 @@ $ hisatgenotype_toolkit <BASE_TOOL> [TOOL_OPTIONS]
 ### locus-samples       
 *(hisatgenotype_locus_samples.py)*
 
+### parse-results
+*(hisatgenotype_parse_results.py)*
 
+* **\--in-dir** | *Default* : Current Directory
+> Input directory where HISAT-genotype *.report* files can be found
 
+* **\-t / \--trim**  | *Default* : 4/All
+> Trim the reported alleles to 1 (A\*01), 2 (A\*01:01), 3 (A\*01:01:01), or all (A\*01:01:01:01) fields
+
+* **\--csv** | *Default* : False
+> Return the formated output in a tab deliminated csv file (tsv) for use in spreadsheets
+
+* **\--output-file** | *Default* : HG_report_results.csv
+> Name of csv file
 
 

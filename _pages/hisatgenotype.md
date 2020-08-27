@@ -10,6 +10,14 @@ share: false
 [__Get HISAT-genotype__](https://github.com/DaehwanKimLab/hisat-genotype)
 
 ### News and Releases:
++ __*08/27/2020*: HISAT-genotype 1.3.1 release__
+    - setup.sh script now works properly and has been given option to predownload required indicies
+    - parse-results script has been added to hisatgenotype\_toolkit and can be used to parse the report files into something more managable in downstream applications and can limit the reported allele digits/files
+    - *--assembly* option now will also output a fasta file with the constructed allele sequences
+    - Added -z/--index\_dir option to hisatgenotype that will tell hisatgenotype where to look for/download indicies
+    - General bug fixes and improvements to stability
+<br>
+
 + __*05/20/2020*: HISAT-genotype 1.3.0 release__
     - Python 3.7 is now the base python HISATgenotype is built upon
     - Core scripts have been further consolidated and collapsed with redundant code being removed
