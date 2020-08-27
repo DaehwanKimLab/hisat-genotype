@@ -27,6 +27,7 @@ import random
 from argparse import ArgumentParser, FileType
 from hisatgenotype_typing_core import genotyping_locus
 import hisatgenotype_args as arguments
+import hisatgenotype_typing_core as typing_core
 
 # --------------------------------------------------------------------------- #
 # This is the Wrapper script that runs the core code found in                 #
@@ -156,9 +157,10 @@ if __name__ == '__main__':
         exit(1)
 
     random.seed(args.random_seed)
-    genotyping_locus(args.base_fname.lower(),
+    typing_core.genotyping_locus(args.base_fname.lower(),
                      locus_list,
                      args.genotype_genome,
+                     args.ix_dir,
                      only_locus_list,
                      args.partial,
                      args.aligner,

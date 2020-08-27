@@ -119,6 +119,31 @@ def validate_variants(vars):
               file=sys.stderr)
         exit(1)
 
+""" Validate node sorting in assembly_graph script line ~600 """
+def validate_node_sorting(nodes):
+    def node_cmp(a, b):
+        if a[2] != b[2]:
+            return a[2] - b[2]
+        else:
+            return a[1] - b[1]
+    
+    valid = True
+    msg   = []
+    for i in range(len(nodes)-1):
+        a = nodes[i]
+        b = nodes[i+1]
+        val = node_cmp(a, b)
+
+        if val > 0:
+            valid = False
+            msg.append("\t%s\n\t%s" % (str(a), str(b)))
+
+    if not valid:
+        print("Error: Failed Node Sorting!!",
+              file=sys.stderr)
+        print("\n".join(msg),
+              file=sys.stderr)
+        exit(1)
 
 # --------------------------------------------------------------------------- #
 # Data Validity Unit tests                                                    #

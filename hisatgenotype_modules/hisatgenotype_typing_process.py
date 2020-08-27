@@ -32,7 +32,7 @@ import hisatgenotype_typing_common as typing_common
 import hisatgenotype_validation_check as validation_check
 
 """ Flag to turn on file debugging to run sanity checks """
-SANITY_CHECK = True
+SANITY_CHECK = False
 # --------------------------------------------------------------------------- #
 # Scripts for use in extract_vars.                                            #
 #                                                                             #

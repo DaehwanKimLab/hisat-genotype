@@ -44,7 +44,7 @@ if __name__ == '__main__':
         description="Extract variants from multiple sequence alignments")
 
     # Add Arguments
-    arguments.args_databases(parser)
+    arguments.args_databases(parser, location = True)
     arguments.args_var_gaps(parser)
     arguments.args_extract_vars(parser)
     arguments.args_no_partial(parser)
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     
     # Clone hisatgenotype database from git
     if not os.path.exists("hisatgenotype_db"):
-        typing_common.clone_hisatgenotype_database()
+        typing_common.clone_hisatgenotype_database(args.ix_dir)
     
     if not args.base_fname:
         base_fname = []

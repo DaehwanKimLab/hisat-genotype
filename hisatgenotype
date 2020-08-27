@@ -375,20 +375,22 @@ def typing_process(args):
                       "test_id",    # Only run Test IDs in this list
                       "single-end", # Use single end synthetic reads
                       "set_seed",   # Set seed for random selection
-                      "test_size"])  # Set size of test to run
+                      "test_size"]) # Set size of test to run
     if args.debug != "":
         for item in args.debug.split(','):
-            if item not in debug_opts:
-                print("Warning: %s not valid option for debug" % item, 
-                      file=sys.stderr)
-                exit(1)
-            elif ':' in item:
+            if ':' in item:
                 fields = item.split(':')
                 assert len(fields) >= 2
                 key, value = fields[0], ':'.join(fields[1:])
-                debug[key] = value
             else:
-                debug[item] = 1
+                key   = item
+                value = None
+
+            if key not in debug_opts:
+                print("Warning: %s not valid option for debug" % key, 
+                      file=sys.stderr)
+                exit(1)         
+            debug[key] = value       
 
     # Advanced setting alerts for users
     if not args.partial:
@@ -563,7 +565,7 @@ def typing_process(args):
     if not region_list:
         region_list.update({ "ALL" : "ALL" })
     discard_list = set()
-    random.seed(args.random_seed)
+    random.seed(args.random_seed) # TODO Find other instances and remove/replace with debug
     if not fq_fname_base:
         if args.debug == '':
             print("No --debug or -U -1 -2 --in-dir options set", 
@@ -710,8 +712,8 @@ if __name__ == '__main__':
     parser.add_argument('--pass-extract',
                         dest='already_extract',
                         action='store_true',
-                        help='Skip read extraction if the read files \
-                                input are already extracted by --base')
+                        help='Skip read extraction if the read files '\
+                                'input are already extracted by --base')
 
     arguments.args_single_end(parser)
     arguments.args_assembly(parser)
@@ -743,9 +745,9 @@ if __name__ == '__main__':
                                  dest="debug",
                                  type=str,
                                  default="",
-                                 help="Test database or code (options: basic, \
-                                            pair, full, single-end, test_list,\
-                                            test_id)(e.g., test_id:10,basic)")
+                                 help="Test database or code (options: basic, " \
+                                            "pair, full, single-end, test_list,"\
+                                            "test_id)(e.g., test_id:10,basic)")
 
     ## Setup arguments into a new namespace for parsing
     arg_dict = {}

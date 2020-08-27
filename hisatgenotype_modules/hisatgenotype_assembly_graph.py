@@ -25,6 +25,10 @@ import random
 from datetime import datetime, date, time
 from collections import deque
 from copy import deepcopy
+import hisatgenotype_validation_check as validation_check
+
+""" Flag to turn on file debugging to run sanity checks """
+SANITY_CHECK = False
 
 # --------------------------------------------------------------------------- #
 # Basic Functions that are used in main classes to build de Bruijn graph      #
@@ -474,6 +478,18 @@ class Node:
         self.avg /= len(self.seq)
         return self.avg
 
+    # Get node sequence
+    def get_seq(self):
+        seq = ""
+        for i in range(len(self.seq)):
+            nt_dic = self.seq[i]
+            nt     = get_major_nt(nt_dic)
+            if nt[0] == "I":
+                seq += nt[1]
+            else:
+                seq += nt
+        return seq
+
     # Display node information
     def print_info(self, output=sys.stderr):
         seq      = "" 
@@ -482,7 +498,7 @@ class Node:
         ins_len  = 0
         for i in range(len(self.seq)):
             if (self.left + i - ins_len) % 100 == 0:
-                seq += ("|%d|" % (self.left + i - ins_len))
+                seq += ("\n|%d|\t" % (self.left + i - ins_len))
             elif (self.left + i - ins_len) % 20 == 0:
                 seq += '|'
             nt_dic = self.seq[i]
@@ -538,7 +554,7 @@ class Graph:
                  partial_allele_ids,
                  true_allele_nodes = {},
                  predicted_allele_nodes = {},
-                 display_allele_nodes = {},
+                 display_allele_nodes = {}, 
                  simulation = False):
         self.backbone               = backbone # backbone sequence
         self.gene_vars              = gene_vars
@@ -598,12 +614,10 @@ class Graph:
     def remove_nodes(self, nodes):
         delete_ids = set()
         node_list  = [[id, node.left, node.right] for id, node in nodes.items()]
-        def node_cmp(a, b):
-            if a[2] != b[2]:
-                return a[2] - b[2]
-            else:
-                return a[1] - b[1]
-        node_list = sorted(node_list, cmp=node_cmp)
+        node_list  = sorted(node_list, key = lambda x: (x[2], x[1]))
+        if SANITY_CHECK:
+            validation_check.validate_node_sorting(node_list)
+
         for n in range(len(node_list)):
             id, left, right = node_list[n]
             node = nodes[id]
@@ -736,12 +750,7 @@ class Graph:
                     seq  = seq[k:]
                     nodes.append([id_, node.left, node.right, kmer, seq])
                 
-            def node_cmp(a, b):
-                if a[1] != b[1]:
-                    return a[1] - b[1]
-                else:
-                    return a[2] - b[2]
-            nodes = sorted(nodes, cmp=node_cmp) # Sort by left position
+            nodes = sorted(nodes, key = lambda x: (x[1], x[2])) # Sort by left position
 
             # Generate numerical read IDs (Positional Indecies)
             id_to_num = {}
@@ -1009,11 +1018,11 @@ class Graph:
                         if len(consensus_seq[j]) >= 2:
                             kmer_seq += "\033[00m"
                         
-                    print(("\t%d:" % v, 
+                    print("\t%d:" % v, 
                            kmer_seq, 
                            len(num_ids), 
                            predecessors, 
-                           num_ids),
+                           num_ids,
                           file=sys.stderr)
 
         id_to_num = {} # Regenerate new ID_to_num
@@ -1102,13 +1111,7 @@ class Graph:
             return mate_num_ids
         
         ### Generate a compressed assembly graph
-        def path_cmp(a, b):
-            if a[0] != b[0]:
-                return a[0] - b[0]
-            else:
-                return a[1] - b[1]
-        paths = sorted(paths, cmp=path_cmp)
-
+        paths = sorted(paths, key = lambda x: (x[0], x[1]))
         for p in range(len(paths)):
             if print_msg: 
                 print(("path:", p, paths[p]), 
@@ -1161,12 +1164,12 @@ class Graph:
                     classes = equiv_list[i]
                     for j in range(len(classes)):
                         ids, num_ids, all_ids, alleles = classes[j]
-                        print((i, 
+                        print(i, 
                                j, 
                                ids, 
                                len(num_ids), 
                                sorted(list(num_ids))[:20], 
-                               alleles), 
+                               alleles, 
                               file=sys.stderr)
                     print("\n", file=sys.stderr)
 
@@ -1182,7 +1185,7 @@ class Graph:
                         return math.log10(float(inter)/float(union))
 
                     # TODO: Work in progress building maximixing path
-                    alleles = self.predicted_allele_nodes.keys()
+                    alleles = list(self.predicted_allele_nodes.keys())
                     vitres  = {'key' : [], 'value' : [], 'path' : []}
                     anodes  = [None, None]
                     # For all allele pairs ...
@@ -1237,7 +1240,8 @@ class Graph:
                             vitres['path'].append(path)
                             vitres['value'].append(score)
 
-                    print(vitres)
+                    if SANITY_CHECK:
+                        print(vitres)
                     ix = max(range(len(vitres['value'])), 
                              key=vitres['value'].__getitem__)
                     best_alleles = vitres['key'][ix]
@@ -1283,8 +1287,8 @@ class Graph:
                 v_coloring = annotate_contig(True) # Use Viturbi coloring
 
             # Identify identical stretches of nodes to merge
-            best_common_mat = [], 
-            best_stat       = -sys.maxsize, 
+            best_common_mat = []
+            best_stat       = -sys.maxsize
             best_i          = -1 
             best_i2         = -1
             for i in range(len(equiv_list) - 1):
@@ -1347,7 +1351,7 @@ class Graph:
                             print((i, j, num_ids), 
                                   file=sys.stderr)
 
-                        assert (num_ids) > 0
+                        assert isinstance(num_ids, list)
                         read_id = num_to_id[num_ids[0]]
                         node    = deepcopy(self.nodes[read_id])
                         for num_id2 in num_ids[1:]:
@@ -1570,13 +1574,8 @@ class Graph:
     # Compare nodes and get information
     def get_node_comparison_info(self, node_dic):
         assert len(node_dic) > 0
-        nodes = [[id, node.left, node.right] for id, node in node_dic.items()]
-        def node_cmp(a, b):
-            if a[1] != b[1]:
-                return a[1] - b[1]
-            else:
-                return a[2] - b[2]
-        nodes  = sorted(nodes, cmp=node_cmp)
+        nodes  = [[id, node.left, node.right] for id, node in node_dic.items()]
+        nodes  = sorted(nodes, key = lambda x: (x[1], x[2]))
         seqs   = [] 
         colors = []
         for p in range(len(self.backbone)):
@@ -1632,8 +1631,13 @@ class Graph:
     def print_node_comparison(self, node_dic):
         nodes, seqs, colors = self.get_node_comparison_info(node_dic)
         interval = 100
-        for p in range(0, (len(self.backbone) + interval - 1) \
-                                / interval * interval, interval):
+        for p in range(0, 
+                       int(
+                           (len(self.backbone) + interval - 1) \
+                            / interval                         \
+                            * interval                         \
+                           ),                                  \
+                       interval):
             cur_seqs = []
             for n in range(len(nodes)):
                 id, left, right = nodes[n] # inclusive coordinate
@@ -1665,7 +1669,7 @@ class Graph:
                 
             print(p, file=sys.stderr)
             for seq, id in cur_seqs:
-                print(("\t", seq, id), 
+                print("\t", seq, id, 
                       file=sys.stderr)
 
     # Calculate coverage
@@ -1860,9 +1864,7 @@ class Graph:
              title = ""):
         assert len(self.nodes) > 0
         nodes = [[id, node.left, node.right] for id, node in self.nodes.items()]
-        def node_cmp(a, b):
-            return a[1] - b[1]
-        nodes     = sorted(nodes, cmp=node_cmp)
+        nodes = sorted(nodes, key = lambda x: x[1])
         max_right = len(self.backbone)
 
         # display space
@@ -2051,7 +2053,6 @@ class Graph:
                                          "fill" : allele_node_color,
                                          "stroke" : "0 0 0",
                                          "line_width" : 2}])
-
 
                 color_boxes = []
                 c = 0

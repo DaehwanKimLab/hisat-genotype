@@ -37,6 +37,7 @@ if __name__ == '__main__':
 
     # Add Arguments
     arguments.args_databases(parser, 
+                             True,
                              True) # Add option to change genotype_genome name
     arguments.args_input_output(parser)
     arguments.args_aligner_inputs(parser)
@@ -99,6 +100,7 @@ if __name__ == '__main__':
             exit(1)
 
     _ = extract_reads(args.genotype_genome,
+                      args.ix_dir,
                       database_list, # base_fname
                       args.read_dir,
                       args.out_dir,

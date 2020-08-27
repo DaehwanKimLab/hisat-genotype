@@ -33,7 +33,7 @@ import hisatgenotype_assembly_graph as assembly_graph
 import hisatgenotype_validation_check as validation_check
 
 """ Flag to turn on file debugging to run sanity checks """
-SANITY_CHECK = True
+SANITY_CHECK = False
 
 # Needed to check for strings and as compatability with python2
 if not hasattr(__builtins__, "basestring"):
@@ -278,17 +278,22 @@ def typing(simulation,
            dbversion,
            test_i = 0):
 
-    base_fname = full_path_base_fname.split("/")[-1]
-    core_fid   = "" # May add to bottom of options
+    complete     = {"Init Align"    : False,
+                    "Locus Process" : False,
+                    "Align Return"  : False} # list of completed tasks
+    base_fname  = full_path_base_fname.split("/")[-1]
+    core_fid    = "" # May add to bottom of options
+    report_base = '%s/%s-%s.' % (out_dir, output_base, base_fname)
     if simulation:
-        test_passed = {}
-        report_file = open('%s/%s-%s_test-%s.report' 
-                           % (out_dir, output_base, base_fname, test_i + 1), 'w')
+        test_passed  = {}
+        core_fid     = str(test_i + 1)
+        report_base += "test-"
     else:
         core_fid = '_'.join(read_fname[0].split('/')[-1].split('.')[:-1])
-        report_file = open('%s/%s-%s-%s.report' 
-                           % (out_dir, output_base, base_fname, core_fid), 'w')
-    
+
+    report_base += core_fid
+    report_file  = open('%s.report' % report_base, "w")
+
     if verbose or assembly_verbose or simulation:
         msg_out = [sys.stderr, report_file]
     else:
@@ -321,6 +326,7 @@ def typing(simulation,
 
     # Begin Alignment for typing
     for aligner, index_type in aligners:
+        complete["Init Align"] = True # Initialize alignment
         for f_ in msg_out:
             if index_type == "graph":
                 print("\n\t\t%s %s" % (aligner, index_type), 
@@ -355,6 +361,7 @@ def typing(simulation,
 
         viterbi_calls = {}
         for test_Gene_names in locus_list:
+            complete["Locus Process"] = True # Begin locus processing
             if base_fname == "genome":
                 if simulation:
                     region_chr, region_left, region_right = test_Gene_names[0]
@@ -524,7 +531,7 @@ def typing(simulation,
                     true_allele_nodes[allele_name] \
                         = create_allele_node(allele_name)
 
-            display_allele_nodes = {}
+            display_allele_nodes = {} # other alleles to display on pdf
             for display_allele in display_alleles:
                 display_allele_nodes[display_allele] \
                     = create_allele_node(display_allele)
@@ -784,6 +791,8 @@ def typing(simulation,
                 # Cigar regular expression
                 cigar_re = re.compile('\d+\w')
                 for line in alignview_proc.stdout:
+                    if not complete["Align Return"]: # Confirm alingment return
+                        complete["Align Return"] = True
                     line = line.strip()
                     cols = line.split()
                     read_id, flag, chr, pos, mapQ, cigar_str = cols[:6]
@@ -1253,7 +1262,8 @@ def typing(simulation,
                                           positive_ht, 
                                           1)                     
 
-                            cur_cmpt, cur_cmpt_gen = "", ""
+                            cur_cmpt     = ""
+                            cur_cmpt_gen = ""
                             if base_fname == "hla":
                                 cur_primary_exons_cmpt \
                                     = add_stat(Gene_primary_exons_cmpt, 
@@ -1399,9 +1409,9 @@ def typing(simulation,
                         for ht in hts:
                             cmp_list = []
                             read_pos = 0
-                            vars_ = ht.split('-')
-                            left_ = int(vars_[0])
-                            vars_ = vars_[1:]
+                            vars_    = ht.split('-')
+                            left_    = int(vars_[0])
+                            vars_    = vars_[1:]
                             for var_i in range(len(vars_)):
                                 var_id = vars_[var_i]
                                 # ref_seq, read_seq
@@ -1477,8 +1487,8 @@ def typing(simulation,
                                         read_node_pos = ref_pos
                                 if type == "match":
                                     read_end        = read_pos + length
-                                    read_node_seq  += [read_seq[read_pos:read_end]]
-                                    read_node_qual += [read_qual[read_pos:read_end]]
+                                    read_node_seq  += list(read_seq[read_pos:read_end])
+                                    read_node_qual += list(read_qual[read_pos:read_end])
                                     read_node_var  += ([''] * length)
                                     read_pos        = read_end
                                 elif type == "mismatch":
@@ -1504,7 +1514,7 @@ def typing(simulation,
                                     ins_len         = length
                                     ins_seq         = read_seq[read_pos:read_end]
                                     read_node_seq  += ["I%s" % nt for nt in ins_seq]
-                                    read_node_qual += [read_qual[read_pos:read_end]]
+                                    read_node_qual += list(read_qual[read_pos:read_end])
                                     read_node_var  += ([var_id] * ins_len)                                        
                                     read_pos        = read_end
                                 else:
@@ -1597,6 +1607,8 @@ def typing(simulation,
                 prev_AS      = None
                 alleles      = set()
                 for line in alignview_proc.stdout:
+                    if not complete["Align Return"]: # Confirm alingment return
+                        complete["Align Return"] = True
                     cols = line[:-1].split()
                     read_id, flag, allele = cols[:3]
                     flag = int(flag)
@@ -1786,14 +1798,8 @@ def typing(simulation,
                 asm_graph.calculate_coverage()
                 
                 # Start drawing assembly graph
-                if simulation:
-                    fname = "%s/%s-%d.%s.%s" \
-                             % (out_dir, output_base, test_i+1, base_fname, gene)
-                    asm_graph.begin_draw(fname)
-                else:
-                    fname = "%s/%s-%d.%s.%s" \
-                             % (out_dir, output_base, base_fname, gene, core_fid)
-                    asm_graph.begin_draw(fname)
+                fname = "%s.%s" % (report_base, gene)
+                asm_graph.begin_draw(fname)
 
                 # Draw assembly graph
                 try:
@@ -1815,16 +1821,21 @@ def typing(simulation,
                     # End drawing assembly graph
                     asm_graph.end_draw()
                 
-                except:
+                except Exception as err:
+                    assembly = False
                     for f_ in msg_out:
                         print("Error in building and calling viterbi", 
                               file=f_)
+                    if SANITY_CHECK:
+                        print(err, file = sys.stderr)
+                        print("Error on line {}".format(sys.exc_info()[-1].tb_lineno))
+                        exit(1)
 
                 # Compare two alleles
                 if simulation and len(test_Gene_names) == 2:
                     allele_name1, allele_name2 = test_Gene_names
-                    print((allele_name1, "vs.", allele_name2), 
-                          file=sys.stderr)
+                    print(allele_name1, "vs.", allele_name2, 
+                        file=sys.stderr)
                     asm_graph.print_node_comparison(asm_graph.true_allele_nodes)
 
                 def compare_alleles(vars1, 
@@ -1864,13 +1875,14 @@ def typing(simulation,
                         if cmp_var_id == node_var_id:
                             skip = False
                             if print_output:
-                                if cmp_var_in_exon:
-                                    print("\033[94mexon%d\033[00m" % (exon_i + 1), 
-                                          file=sys.stderr)
-                                print((cmp_var_id, 
-                                       cmp_var, 
-                                       "\t\t\t", mpileup[cmp_var[1]]), 
-                                      file=sys.stderr)
+                                for f_ in msg_out:
+                                    if cmp_var_in_exon:
+                                        print("\033[94mexon%d\033[00m" % (exon_i + 1), 
+                                            file=f_)
+                                    print(cmp_var_id, 
+                                        cmp_var, 
+                                        "\t\t\t", mpileup[cmp_var[1]], 
+                                        file=f_)
                             var_i += 1
                             var_j += 1
 
@@ -1894,12 +1906,12 @@ def typing(simulation,
                                                        % (exon_i + 1), 
                                                       file=f_)
                                         for f_ in msg_out:
-                                            print(("***", 
+                                            print("***", 
                                                     cmp_var_id, 
                                                     cmp_var, 
                                                     "==", 
                                                     "\t\t\t", 
-                                                    mpileup[cmp_var[1]]), 
+                                                    mpileup[cmp_var[1]], 
                                                   file=sys.stderr)
                                     mismatches += 1
                             var_i += 1
@@ -1911,11 +1923,11 @@ def typing(simulation,
                                                % (exon_i + 1), 
                                               file=f_)
                                 for f_ in msg_out:
-                                    print(("*** ==", 
+                                    print("*** ==", 
                                             node_var_id, 
                                             node_var, 
                                             "\t\t\t", 
-                                            mpileup[node_var[1]]), 
+                                            mpileup[node_var[1]], 
                                           file=f_)
                             mismatches += 1
                             var_j += 1
@@ -1938,20 +1950,22 @@ def typing(simulation,
                     return allele_seq, allele_exons, mismatches
                     
                 tmp_nodes = asm_graph.nodes
-                print(("Number of tmp nodes:", len(tmp_nodes)), 
-                      file=sys.stderr)
+                for f_ in msg_out:
+                    print("Number of tmp nodes:", len(tmp_nodes), 
+                        file=f_)
                 count = 0
                 for id, node in tmp_nodes.items():
                     count += 1
                     if count > 10:
                         break
                     node_vars = node.get_var_ids()
-                    node.print_info()
-                    print("\n", file=sys.stderr)
-                    if node.id in asm_graph.to_node:
-                        for id2, at in asm_graph.to_node[node.id]:
-                            print("\tat %d ==> %s" % (at, id2), 
-                                  file=sys.stderr)
+                    for f_ in msg_out:
+                        node.print_info(f_)
+                        print("\n", file=f_)
+                        if node.id in asm_graph.to_node:
+                            for id2, at in asm_graph.to_node[node.id]:
+                                print("\tat %d ==> %s" % (at, id2), 
+                                    file=f_)
 
                     if simulation:
                         cmp_Gene_names = test_Gene_names
@@ -1974,26 +1988,30 @@ def typing(simulation,
                             alleles.append([cmp_Gene_name, tmp_vars])
 
                     for allele_name, cmp_vars in alleles:
+                        allele_seq, \
+                            allele_exons, \
+                            allele_mm \
+                            = compare_alleles(cmp_vars, node_vars)
+
                         for f_ in msg_out:
-                            print(("vs.", allele_name), 
+                            print("vs.", allele_name, 
+                                  file=f_)
+                            print("\t\tallele sequence (%d bps):" % len(allele_seq), 
+                                  allele_seq, 
+                                  file=f_)
+                            print("\t\texons (zero-based offset):", allele_exons, 
                                   file=f_)
 
-                            allele_seq, \
-                              allele_exons, \
-                              allele_mm \
-                                = compare_alleles(cmp_vars, node_vars)
-                            print(("\t\tallele sequence (%d bps):" % len(allele_seq), 
-                                  allele_seq), 
-                                  file=f_)
-                            print(("\t\texons (zero-based offset):", allele_exons), 
-                                  file=f_)
-
-                    print("\n\n", file=sys.stderr)
+                    for f_ in msg_out:
+                        print("\n\n", file=f_)
 
             # Identify alleles that perfectly or closesly match assembled alleles
+            fasta_dic  = {}
+            contig_cnt = 0
             for node_name, node in asm_graph.nodes.items():
                 vars = set(node.get_var_ids())
 
+                fasta_key        = node_name + " " + "contig %d" % contig_cnt + " "
                 max_allele_names = []
                 max_common       = -sys.maxsize
                 for allele_name, vars2 in allele_vars.items():
@@ -2006,28 +2024,48 @@ def typing(simulation,
                         max_allele_names.append(allele_name)
 
                 for f_ in msg_out:
-                    print(("Genomic:", node_name), file=f_)
+                    print("\tGenomic:", node_name, file=f_)
                     
-                    node_vars = node.get_var_ids()
-                    min_mismatches = sys.maxsize
-                    for max_allele_name in max_allele_names:
-                        cmp_vars = allele_vars[max_allele_name]
-                        cmp_vars.sort(key=lambda x: int(x[2:]))
-                        
-                        _, _, tmp_mismatches = compare_alleles(cmp_vars, 
-                                                               node_vars, 
-                                                               print_output = False)
-                        print(("\t\t%s:" 
-                               % max_allele_name, max_common, tmp_mismatches), 
+                node_vars      = node.get_var_ids()
+                min_mismatches = sys.maxsize
+                node_call      = ""
+                for max_allele_name in max_allele_names:
+                    cmp_vars = allele_vars[max_allele_name]
+                    cmp_vars.sort(key=lambda x: int(x[2:]))
+                    
+                    _, _, tmp_mismatches = compare_alleles(cmp_vars, 
+                                                            node_vars, 
+                                                            print_output = False)
+                    for f_ in msg_out:
+                        print("\t\t%s:" % max_allele_name, 
+                              max_common, 
+                              tmp_mismatches,
                               file=f_)
-                        if tmp_mismatches < min_mismatches:
-                            min_mismatches = tmp_mismatches
+
+                    if tmp_mismatches < min_mismatches:
+                        min_mismatches = tmp_mismatches
+                        node_call      = max_allele_name
                     
-                    if min_mismatches > 0:
-                        print("Novel allele", file=f_)
+                if min_mismatches > 0:
+                    fasta_key += "Novel"
+                    for f_ in msg_out:
+                        print("\tNovel allele", file=f_)
                     
-                    else:
-                        print("Known allele", file=f_)
+                else:
+                    fasta_key += node_call
+                    for f_ in msg_out:
+                        print("\tKnown allele", file=f_)
+
+                if SANITY_CHECK:
+                    print(fasta_key, file=sys.stderr)
+                    print(node.get_seq(), file=sys.stderr)
+
+                fasta_dic[fasta_key] = node.get_seq()
+                contig_cnt += 1    
+
+            if fasta_dic:
+                typing_common.write_fasta(report_base + '.fasta',
+                                          fasta_dic)
 
             if simulation:
                 success = [False for i in range(len(test_Gene_names))]
@@ -2050,8 +2088,8 @@ def typing(simulation,
                                 else:
                                     break
                             for f_ in msg_out:
-                                print(("\t\t\t*** %d ranked %s (abundance: %.2f%%)" 
-                                        % (rank_i+1, test_Gene_name, prob[1]*100.0)), 
+                                print("\t\t\t*** %d ranked %s (abundance: %.2f%%)" 
+                                        % (rank_i+1, test_Gene_name, prob[1]*100.0), 
                                       file=f_)
                             if rank_i < len(success):
                                 success[rank_i] = True
@@ -2062,8 +2100,8 @@ def typing(simulation,
                         break
                 if not found:
                     for f_ in msg_out:
-                        print(("\t\t\t\t%d ranked %s (abundance: %.2f%%)" 
-                                % (prob_i + 1, _allele_rep, prob[1] * 100.0)), 
+                        print("\t\t\t\t%d ranked %s (abundance: %.2f%%)" 
+                                % (prob_i + 1, _allele_rep, prob[1] * 100.0), 
                                file=f_)
 
                         if best_alleles and prob_i < 2:
@@ -2115,6 +2153,14 @@ def typing(simulation,
                           file=f_)
 
     report_file.close()
+
+    # Check if all runs occured properly
+    for key, value in complete.items():
+        if not value:
+            print("Error in running HISATgenotype: Incomplete %s" % key,
+                  file=sys.stderr)
+            exit(1)
+
     if simulation:
         return test_passed
 
@@ -2589,8 +2635,8 @@ def genotyping_locus(base_fname,
             print("%s:\t%d/%d passed (%.2f%%)" 
                    % (aligner_type, 
                       passed, 
-                      len(test_list), 
-                      passed * 100.0 / len(test_list)), 
+                      len(test_list) * allele_count * len(genes), 
+                      passed * 100.0 / (len(test_list) * allele_count * len(genes))), 
                   file=sys.stderr)
     
     else: # With real reads or BAMs

@@ -32,7 +32,7 @@ import hisatgenotype_typing_process as typing_process
 import hisatgenotype_validation_check as validation_check
 
 """ Flag to turn on file debugging to run sanity checks """
-SANITY_CHECK = True
+SANITY_CHECK = False
 # --------------------------------------------------------------------------- #
 #   Sequence processing routines and common functions                         #
 # --------------------------------------------------------------------------- #
@@ -174,6 +174,24 @@ def read_genome(genome_file):
         seqs.pop(0)
     
     return chr_dic, chr_names, chr_full_names
+
+""" Function for writing fasta files from dictionary """
+def write_fasta(filename, 
+                sequences,
+                add_len = True):
+    file_path = filename.split("/")[:-1]
+    file_path = "/".join(file_path)
+    if not os.path.exists(file_path):
+        os.makedirs(file_path)
+ 
+    with open(filename, 'a+') as ofile:
+        for seq_name, seq in sequences.items():
+            if add_len:
+                ofile.write('>' + seq_name + ' ' + str(len(seq)) + 'bp' + '\n')
+            else:
+                ofile.write('>' + seq_name + '\n')
+            for subseq in (seq[i:i+60] for i in range(0, len(seq), 60)):
+                ofile.write(subseq + '\n')
 
 """ This will remove dupliate sequences or sequences that are redundant """
 """ Identical substrings in larger strings are also removed """
@@ -590,7 +608,7 @@ def build_index_if_not_exists(base,
             if not check_files(hisat2_linear_index_fnames):
                 build_cmd = ["hisat2-build",
                              "%s_backbone.fa,%s_sequences.fa" % (full_base, full_base),
-                             "%s.linear" % fill_base]
+                             "%s.linear" % full_base]
                 proc = subprocess.Popen(build_cmd, 
                                         stdout = open("/dev/null", 'w'), 
                                         stderr = open("/dev/null", 'w'))
@@ -1981,7 +1999,7 @@ def call_nuance_results(nfile):
                 split_by = 2
 
             gene = line.split()[split_by].split('*')[0]
-            ix = line.find(gene)
+            ix   = line.find(gene)
             line = line[ix:]
             if gene not in datatree['EM']:
                 datatree['EM'][gene] = []
