@@ -9,9 +9,11 @@ https://daehwankimlab.github.io/hisat-genotype/
 https://daehwankimlab.github.io/hisat2/
 
 ## Current Release Version
-v1.3.1 - Update database locations and handling, and general stability fixes
+v1.3.2 - Update to patch critical extract reads error
 
 ## Previous Releases
+v1.3.1 - Update database locations and handling, and general stability fixes - BROKEN
+
 v1.3.0 - Python 3 version
 
 ## Overview
