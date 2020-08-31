@@ -2641,9 +2641,9 @@ def genotyping_locus(base_fname,
     
     else: # With real reads or BAMs
         if base_fname == "genome":
-            print(("\t", locus_list), file=sys.stderr)
+            print("\t", locus_list, file=sys.stderr)
         else:
-            print(("\t", ' '.join(locus_list)), file=sys.stderr)
+            print("\t", ' '.join(locus_list), file=sys.stderr)
         typing(simulation,
                full_gg_path,
                locus_list,

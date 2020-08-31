@@ -632,6 +632,7 @@ def typing_process(args):
                     args = (base,
                             locus_list,
                             args.genotype_genome,
+                            args.ix_dir,
                             only_locus_list,
                             args.partial,
                             args.aligner,

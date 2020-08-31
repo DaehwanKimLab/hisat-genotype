@@ -39,7 +39,7 @@ def args_common(parser,
                             type=int,
                             default=1,
                             help="Number of threads")
-    parser.add_argument('-v', '--verbose',
+    parser.add_argument("-v",
                         dest='verbose',
                         action='store_true',
                         help='Print statistics to stderr')

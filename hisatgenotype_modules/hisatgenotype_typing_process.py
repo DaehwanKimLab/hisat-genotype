@@ -541,7 +541,7 @@ def extract_vars(base_fname,
                     gene_exon_counts[gene][num] += 1
                 
         for gene, exon_counts in gene_exon_counts.items():
-            print(("%s exon counts:" % gene, exon_counts), 
+            print("%s exon counts:" % gene, exon_counts, 
                   file=sys.stderr)
 
     itr             = 0
@@ -1216,7 +1216,7 @@ def extract_vars(base_fname,
             assert len(sanity_vars) == len(cur_vars)
             i = j
 
-        print(("Length of additional sequences for haplotypes:", add_seq_len), 
+        print("Length of additional sequences for haplotypes:", add_seq_len, 
               file=sys.stderr)
 
         sorted_all_alleles = typing_common.sort_genall(list(names.keys()), 
@@ -1348,12 +1348,13 @@ def extract_reads(base_fname,    # Base file name of genome to use
         else:
             exit(1)
 
+    base_filepath = ix_dir + "/" + base_fname
     fname_list    = {} # For use in Hisatgenotype script
     filter_region = len(database_list) > 0
     ranges        = []
     regions       = {}
     region_loci   = {}
-    for line in open("%s.locus" % base_fname):
+    for line in open("%s.locus" % base_filepath):
         family, allele_name, chr, left, right = line.strip().split()[:5]
         if filter_region and family.lower() not in database_list:
             continue
@@ -1461,7 +1462,7 @@ def extract_reads(base_fname,    # Base file name of genome to use
                 aligner_cmd += ["-p", "%d" % threads_aprocess]
             if not fastq:
                 aligner_cmd += ["-f"]
-            aligner_cmd += ["-x", base_fname]
+            aligner_cmd += ["-x", base_filepath]
             if aligner == "hisat2":
                 aligner_cmd += ["--no-spliced-alignment"]
                 # aligner_cmd += ["--max-altstried", "64"]
@@ -1526,7 +1527,7 @@ def extract_reads(base_fname,    # Base file name of genome to use
             whole_gzip_dic = {}
             if block_size > 0:
                 mult = block_size / 1000000
-                for chr_line in open("%s.fa.fai" % base_fname):
+                for chr_line in open("%s.fa.fai" % base_filepath):
                     chr, length = chr_line.strip().split('\t')[:2]
                     length = int(length)
                     if chr not in [str(i+1) for i in range(22)] \
