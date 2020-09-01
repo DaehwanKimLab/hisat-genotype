@@ -305,7 +305,7 @@ def read_locus(fname,
             exons.append([exon_left, exon_right])
             if primary:
                 primary_exons.append([exon_left, exon_right])
-        refGene_loci[gene_gene] = [gene_name, chr, left, right, exons, primary_exons]
+        refGene_loci[gene_gene] = [gene_name, chrom, left, right, exons, primary_exons]
     return refGenes, refGene_loci
 
 """ Read the allele sequences from fasta format 'backbone.fa' files  """
