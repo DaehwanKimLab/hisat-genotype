@@ -22,13 +22,20 @@
 import sys
 import math
 import random
+import json
+import os
 from datetime import datetime, date, time
 from collections import deque
 from copy import deepcopy
 import hisatgenotype_validation_check as validation_check
 
 """ Flag to turn on file debugging to run sanity checks """
-SANITY_CHECK = False
+setting_file = '/'.join(os.path.realpath(__file__).split('/')[:-2])\
+                    + "/devel/settings.json"
+with open(setting_file, "r") as ifi:
+    settings = json.load(ifi)
+
+SANITY_CHECK = settings["sanity_check"]
 
 # --------------------------------------------------------------------------- #
 # Basic Functions that are used in main classes to build de Bruijn graph      #
@@ -959,6 +966,7 @@ class Graph:
                     self.other_nodes[id][sub-1] = None
 
             # Cleaning up other nodes
+            node_purge = []
             for id in self.nodes.keys():
                 other_nodes = []
                 if id in self.other_nodes:
@@ -967,7 +975,8 @@ class Graph:
                             other_nodes.append(other_node)
                 if self.nodes[id] == None:
                     if len(other_nodes) == 0:
-                        del self.nodes[id]
+                        #del self.nodes[id]
+                        node_purge.append(id)
                     else:
                         self.nodes[id] = other_nodes[0]
                         del other_nodes[0]
@@ -976,6 +985,9 @@ class Graph:
                         del self.other_nodes[id]
                     else:
                         self.other_nodes[id] = other_nodes
+
+            for id in node_purge:
+                del self.nodes[id]
 
             for id in ids_to_be_updated:
                 if id in self.nodes:
@@ -1722,12 +1734,13 @@ class Graph:
                         coverage[allele_node_id][p] += add_cov
 
         max_cov = 0.0
+        new_cov = deepcopy(coverage)
         for allele_id, cov in coverage.items():
             max_cov = max(max_cov, max(cov))
         for allele_id, cov in coverage.items():
             cov2 = [c / max_cov for c in cov]
-            coverage[allele_id] = cov2
-        self.coverage = coverage
+            new_cov[allele_id] = cov2
+        self.coverage = new_cov
                                 
     # Begin drawing graph
     def begin_draw(self, fname_base):

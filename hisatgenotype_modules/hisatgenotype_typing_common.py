@@ -26,13 +26,20 @@ import re
 import math
 import random
 import errno
+import json
 from copy import deepcopy
 from datetime import datetime
 import hisatgenotype_typing_process as typing_process
 import hisatgenotype_validation_check as validation_check
 
 """ Flag to turn on file debugging to run sanity checks """
-SANITY_CHECK = False
+setting_file = '/'.join(os.path.realpath(__file__).split('/')[:-2])\
+                    + "/devel/settings.json"
+with open(setting_file, "r") as ifi:
+    settings = json.load(ifi)
+
+SANITY_CHECK = settings["sanity_check"]
+
 # --------------------------------------------------------------------------- #
 #   Sequence processing routines and common functions                         #
 # --------------------------------------------------------------------------- #

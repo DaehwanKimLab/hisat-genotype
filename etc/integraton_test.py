@@ -109,3 +109,5 @@ def test_assembly():
         print(err, file = sys.stderr)
         print("Error on line {}".format(sys.exc_info()[-1].tb_lineno))
         exit(1)
+
+        

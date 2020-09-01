@@ -1,0 +1,19 @@
+# VERSIONS:
+# HISAT2 - 2.2.1
+
+# HISAT-genotype - 1.3.2
+
+# Database - Database /Users/christopher/Documents/projects/hisatgenotype-project/hisatgenotype-devel-git/indicies/hla derived from HISATgenotype DB version: NONE
+# COMMAND:
+/Users/christopher/Documents/projects/hisatgenotype-project/hisatgenotype-devel-git/hisatgenotype --base hla --locus-list A --debug basic,test_size:5,set_seed:101 --out-dir hg_test1_basic
+
+		hisat2 graph
+			626 reads and 313 pairs are aligned
+			*** 1 ranked A*02:151 (count: 313)
+				2 A*02:188 (count: 295)
+				3 A*02:01:64 (count: 294)
+				4 A*02:01:75 (count: 294)
+				5 A*02:147 (count: 294)
+
+
+			*** 1 ranked A*02:151 (abundance: 100.00%)

@@ -26,6 +26,7 @@ import re
 import random
 import math
 import multiprocessing
+import json
 from datetime import datetime, date, time
 from copy import deepcopy
 import hisatgenotype_typing_common as typing_common
@@ -33,7 +34,12 @@ import hisatgenotype_assembly_graph as assembly_graph
 import hisatgenotype_validation_check as validation_check
 
 """ Flag to turn on file debugging to run sanity checks """
-SANITY_CHECK = False
+setting_file = '/'.join(os.path.realpath(__file__).split('/')[:-2])\
+                    + "/devel/settings.json"
+with open(setting_file, "r") as ifi:
+    settings = json.load(ifi)
+
+SANITY_CHECK = settings["sanity_check"]
 
 # Needed to check for strings and as compatability with python2
 if not hasattr(__builtins__, "basestring"):
@@ -1829,7 +1835,7 @@ def typing(simulation,
                     if SANITY_CHECK:
                         print(err, file = sys.stderr)
                         print("Error on line {}".format(sys.exc_info()[-1].tb_lineno))
-                        exit(1)
+                        raise
 
                 # Compare two alleles
                 if simulation and len(test_Gene_names) == 2:

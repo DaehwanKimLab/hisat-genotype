@@ -28,11 +28,18 @@ import inspect
 import random
 import glob
 import multiprocessing
+import json
 import hisatgenotype_typing_common as typing_common
 import hisatgenotype_validation_check as validation_check
 
 """ Flag to turn on file debugging to run sanity checks """
-SANITY_CHECK = False
+setting_file = '/'.join(os.path.realpath(__file__).split('/')[:-2])\
+                    + "/devel/settings.json"
+with open(setting_file, "r") as ifi:
+    settings = json.load(ifi)
+
+SANITY_CHECK = settings["sanity_check"]
+
 # --------------------------------------------------------------------------- #
 # Scripts for use in extract_vars.                                            #
 #                                                                             #
