@@ -10,6 +10,13 @@ share: false
 [__Get HISAT-genotype__](https://github.com/DaehwanKimLab/hisat-genotype)
 
 ### News and Releases:
++ __*09/01/2020*: HISAT-genotype 1.3.2 release__
+    - Patched critical error during read extractin that prevented proper use of the reference
+    - Fixed bug in assembly code
+    - Added devel folder for CI and as a test bed
+    - General bug fixes
+<br>
+
 + __*08/27/2020*: HISAT-genotype 1.3.1 release__
     - setup.sh script now works properly and has been given option to predownload required indicies
     - parse-results script has been added to hisatgenotype\_toolkit and can be used to parse the report files into something more managable in downstream applications and can limit the reported allele digits/files
