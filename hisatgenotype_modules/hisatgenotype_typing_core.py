@@ -1515,14 +1515,13 @@ def typing(simulation,
                                             == len(read_node_var) + del_len
                                         read_node_var += ([var_id] * del_len)
                                 elif type == "insertion":
-                                    read_end        = read_pos + ins_len
                                     var_id          = cmp[3]
                                     ins_len         = length
                                     ins_seq         = read_seq[read_pos:read_end]
                                     read_node_seq  += ["I%s" % nt for nt in ins_seq]
                                     read_node_qual += list(read_qual[read_pos:read_end])
                                     read_node_var  += ([var_id] * ins_len)                                        
-                                    read_pos        = read_end
+                                    read_pos       += read_end
                                 else:
                                     assert type == "intron"
                                 cmp_i += 1
