@@ -62,10 +62,15 @@ BUILT="hisat2-align-l"
 BASHRC=~/.bashrc
 BASH_PROFILE=~/.bash_profile
 
+# Exit code for `type -P` is 1 if samtools cannot be found in PATH
+type -P samtools &> /dev/null
+if [[ $? == 1 ]]; then
+    echo "Could not find samtools in PATH"
+    exit 1;
+fi
+
 ## This section downloads and sets-up hisat2 submodule
 echo "Setting up HISAT2"
-# Move to hisat2 submodule directory
-cd hisat2
 
 if ! command -v hisat2 &> /dev/null; then
     if test ! -f "$BUILT"; then
@@ -76,10 +81,12 @@ if ! command -v hisat2 &> /dev/null; then
             git submodule update
         fi
         echo "> Initiating Build"
+        # Move to hisat2 submodule directory
+        cd hisat2
         make
+        cd ../
     fi
 fi
-cd ../
 
 # Add PATH lines to BASH
 if [ "$OMMIT_BASH" == "NO" ]; then
