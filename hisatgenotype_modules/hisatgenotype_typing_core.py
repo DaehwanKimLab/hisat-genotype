@@ -2393,9 +2393,7 @@ def genotyping_locus(base_fname,
     else:
         full_gg_path = ix_dir + "/" + base_fname
 
-        # Download human genome and HISAT2 index
         typing_common.clone_hisatgenotype_database(ix_dir)
-        typing_common.download_genome_and_index(ix_dir)  
 
         typing_common.extract_database_if_not_exists(base_fname,
                                                      only_locus_list,
