@@ -43,6 +43,11 @@ def args_common(parser,
                         dest='verbose',
                         action='store_true',
                         help='Print statistics to stderr')
+    parser.add_argument("--core-fid",
+                        dest="core_fid",
+                        type=str,
+                        default=None,
+                        help="Core file id serves as the output file prefix")
     if debug:
         parser.add_argument("--debug",
                             dest="debug",

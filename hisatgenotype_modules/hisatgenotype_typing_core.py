@@ -282,19 +282,19 @@ def typing(simulation,
            assembly_verbose,
            out_dir,
            dbversion,
-           test_i = 0):
+           core_fid=None,
+           test_i=0):
 
     complete     = {"Init Align"    : False,
                     "Locus Process" : False,
                     "Align Return"  : False} # list of completed tasks
     base_fname  = full_path_base_fname.split("/")[-1]
-    core_fid    = "" # May add to bottom of options
     report_base = '%s/%s-%s.' % (out_dir, output_base, base_fname)
     if simulation:
         test_passed  = {}
         core_fid     = str(test_i + 1)
         report_base += "test-"
-    else:
+    elif not core_fid:
         core_fid = '_'.join(read_fname[0].split('/')[-1].split('.')[:-1])
 
     report_base += core_fid
@@ -2304,6 +2304,7 @@ def genotyping_locus(base_fname,
                      verbose,
                      assembly_verbose,
                      out_dir,
+                     core_fid,
                      debug_instr):
     assert isinstance(base_fname, basestring)
     assert not ',' in base_fname
@@ -2393,9 +2394,7 @@ def genotyping_locus(base_fname,
     else:
         full_gg_path = ix_dir + "/" + base_fname
 
-        # Download human genome and HISAT2 index
         typing_common.clone_hisatgenotype_database(ix_dir)
-        typing_common.download_genome_and_index(ix_dir)  
 
         typing_common.extract_database_if_not_exists(base_fname,
                                                      only_locus_list,
@@ -2613,6 +2612,7 @@ def genotyping_locus(base_fname,
                                      assembly_verbose,
                                      out_dir,
                                      dbversion,
+                                     core_fid,
                                      test_i)
 
             didpass = False
@@ -2684,4 +2684,5 @@ def genotyping_locus(base_fname,
                verbose,
                assembly_verbose,
                out_dir,
-               dbversion)
+               dbversion,
+               core_fid)
