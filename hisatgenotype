@@ -686,10 +686,44 @@ def typing_process(args):
             os.remove(fname)
 
 
+def which(program):
+    """
+    Checks if a program is in PATH variable. The code is taken from
+    https://stackoverflow.com/a/377028/2774754 and docstring was added.
+
+    Args:
+        program (string): Program to check for in PATH variable
+
+    Returns:
+        Absolute path to the program if its in the PATH or `None` if it can't
+        find the program
+    """
+    import os
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # Full Wrapper of HISATgenotype to enter script and options                   #
 # --------------------------------------------------------------------------- #
 if __name__ == '__main__':
+
+    if which("samtools") == None:
+        print("Please check that samtools is in PATH", file=sys.stderr)
+        sys.exit(1)
+
     version_dir = '/'.join(os.path.realpath(__file__).split('/')[:-1])
     try:
         h2_v = open(version_dir + "/hisat2/VERSION", "r").read().strip()
