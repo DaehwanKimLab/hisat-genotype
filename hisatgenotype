@@ -606,6 +606,7 @@ def typing_process(args):
                              args.verbose_level,
                              args.assembly_verbose,
                              args.out_dir,
+                             args.output_allele_counts,
                              debug)
     else:
         log = {} # build log to capture errors
@@ -659,6 +660,7 @@ def typing_process(args):
                             args.verbose_level,
                             args.assembly_verbose,
                             args.out_dir,
+                            args.output_allele_counts,
                             debug)
                     )
 
@@ -715,6 +717,12 @@ if __name__ == '__main__':
                         action='store_true',
                         help='Skip read extraction if the read files '\
                                 'input are already extracted by --base')
+
+    parser.add_argument('--output-allele-counts',
+                        dest='output_allele_counts',
+                        action='store_true',
+                        help='Output all allele read counts for each gene in '\
+                                'report file.') 
 
     arguments.args_single_end(parser)
     arguments.args_assembly(parser)
