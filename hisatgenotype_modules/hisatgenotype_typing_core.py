@@ -282,11 +282,12 @@ def typing(simulation,
            assembly_verbose,
            out_dir,
            dbversion,
+           output_allele_counts,
            test_i = 0):
 
-    complete     = {"Init Align"    : False,
-                    "Locus Process" : False,
-                    "Align Return"  : False} # list of completed tasks
+    complete    = {"Init Align"    : False,
+                   "Locus Process" : False,
+                   "Align Return"  : False} # list of completed tasks
     base_fname  = full_path_base_fname.split("/")[-1]
     core_fid    = "" # May add to bottom of options
     report_base = '%s/%s-%s.' % (out_dir, output_base, base_fname)
@@ -1669,7 +1670,7 @@ def typing(simulation,
                         print("\t\t\t\t%d %s (count: %d)" 
                                % (count_i + 1, count[0], count[1]), 
                               file=f_)
-                    if count_i >= 9:
+                    if count_i >= 9 and not output_allele_counts:
                         break
             for f_ in msg_out:
                 print("\n", 
@@ -2304,6 +2305,7 @@ def genotyping_locus(base_fname,
                      verbose,
                      assembly_verbose,
                      out_dir,
+                     output_allele_counts,
                      debug_instr):
     assert isinstance(base_fname, basestring)
     assert not ',' in base_fname
@@ -2613,6 +2615,7 @@ def genotyping_locus(base_fname,
                                      assembly_verbose,
                                      out_dir,
                                      dbversion,
+                                     output_allele_counts,
                                      test_i)
 
             didpass = False
@@ -2684,4 +2687,5 @@ def genotyping_locus(base_fname,
                verbose,
                assembly_verbose,
                out_dir,
-               dbversion)
+               dbversion,
+               output_allele_counts)
